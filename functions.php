@@ -29,8 +29,8 @@ function immomakler_child_skin_search_ranges( $ranges ) {
 
 	// Preis (Miete)
 	$ranges['immomakler_search_price_rent'] = array(
-		'label'       => 'Preis',
-		'slug'        => 'kaltmiete',
+		'label'       => 'Pauschalmiete',
+		'slug'        => 'pauschalmiete',
 		'unit'        => '&euro;',
 		'decimals'    => 0,
 		'meta_key'    => 'kaltmiete',
@@ -41,29 +41,22 @@ function immomakler_child_skin_search_ranges( $ranges ) {
 }
 
 /**
- * Suche: Dropdown-Reihenfolge/aktivierte Taxonomien ergänzen (Ort & Verfügbarkeit).
+ * Suche: Dropdown-Taxonomien einschränken (nur Verfügbarkeit, keine Kauf/Miete etc.).
  *
  * Doku:
  * https://www.wp-immomakler.de/docs-artikel/suchmaske-im-wp-immomakler-customizer-individuell-gestalten
  */
 add_filter( 'immomakler_search_enabled_taxonomies', 'immomakler_child_skin_search_taxonomies' );
 function immomakler_child_skin_search_taxonomies( $taxonomies ) {
-	if ( ! is_array( $taxonomies ) ) {
-		$taxonomies = array();
-	}
-
-	$required = array(
-		'immomakler_object_location', // Ort
-		'immomakler_object_status',   // Verfügbarkeit / Status
+	// Zeige nur noch Verfügbarkeit/Status in der Suchmaske.
+	// Folgende Dropdowns werden damit entfernt:
+	// - immomakler_object_vermarktung (Kauf/Miete)
+	// - immomakler_object_nutzungsart
+	// - immomakler_object_type
+	// - immomakler_object_location (Ort)
+	return array(
+		'immomakler_object_status',
 	);
-
-	foreach ( $required as $taxonomy ) {
-		if ( ! in_array( $taxonomy, $taxonomies, true ) ) {
-			$taxonomies[] = $taxonomy;
-		}
-	}
-
-	return $taxonomies;
 }
 
 /**
@@ -84,13 +77,3 @@ function immomakler_child_skin_status_taxonomy_labels( $args ) {
 	return $args;
 }
 
-/**
- * Listenansicht: Anzahl Spalten (Immobilien pro Zeile) im Archiv.
- *
- * Mit diesem Filter wird die Anzahl der Spalten auf 4 gesetzt.
- * WP-ImmoMakler berechnet daraus passende Bootstrap-Klassen (z.B. col-md-3).
- */
-add_filter( 'immomakler_number_of_columns_archive', 'immomakler_child_skin_number_of_columns_archive' );
-function immomakler_child_skin_number_of_columns_archive( $cols ) {
-	return 4;
-}
