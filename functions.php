@@ -1,79 +1,100 @@
 <?php
-// Hier bei Bedarf Filter und Actions für WP-ImmoMakler eintragen
-
-! defined( 'ABSPATH' ) and exit;
+// Hier bei Bedarf Filter und Actions für WP-ImmoMakler eintragen.
 
 /**
- * Suche: "Mehr Optionen" (Ranges) um Zimmer & Preis konfigurieren.
- *
- * Hinweis: WP-ImmoMakler blendet je nach Auswahl (Kauf/Miete) automatisch
- * den jeweils nicht passenden Preis-Filter aus (Kaufpreis vs. Kaltmiete).
- *
- * Doku:
- * https://www.wp-immomakler.de/docs-artikel/suchmaske-im-wp-immomakler-customizer-individuell-gestalten
+ * Numerische Suchbereiche (Slider) einschränken:
+ * - Anzahl Zimmer
+ * - Pauschalmiete
  */
-add_filter( 'immomakler_search_enabled_ranges', 'immomakler_child_skin_search_ranges' );
-function immomakler_child_skin_search_ranges( $ranges ) {
-	if ( ! is_array( $ranges ) ) {
-		$ranges = array();
-	}
-
-	$ranges['immomakler_search_rooms'] = array(
-		'label'       => 'Zimmer',
-		'slug'        => 'zimmer',
-		'unit'        => '',
-		'decimals'    => 1,
-		'meta_key'    => 'anzahl_zimmer',
-		'slider_step' => 0.5,
-	);
-
-	// Preis (Miete)
-	$ranges['immomakler_search_price_rent'] = array(
-		'label'       => 'Pauschalmiete',
-		'slug'        => 'pauschalmiete',
-		'unit'        => '&euro;',
-		'decimals'    => 0,
-		'meta_key'    => 'kaltmiete',
-		'slider_step' => 100,
-	);
-
-	return $ranges;
-}
-
-/**
- * Suche: Dropdown-Taxonomien einschränken (nur Verfügbarkeit, keine Kauf/Miete etc.).
- *
- * Doku:
- * https://www.wp-immomakler.de/docs-artikel/suchmaske-im-wp-immomakler-customizer-individuell-gestalten
- */
-add_filter( 'immomakler_search_enabled_taxonomies', 'immomakler_child_skin_search_taxonomies' );
-function immomakler_child_skin_search_taxonomies( $taxonomies ) {
-	// Zeige nur noch Verfügbarkeit/Status in der Suchmaske.
-	// Folgende Dropdowns werden damit entfernt:
-	// - immomakler_object_vermarktung (Kauf/Miete)
-	// - immomakler_object_nutzungsart
-	// - immomakler_object_type
-	// - immomakler_object_location (Ort)
+add_filter( 'immomakler_search_enabled_ranges', 'my_immomakler_search_ranges' );
+function my_immomakler_search_ranges( $ranges ) {
 	return array(
-		'immomakler_object_status',
+		'immomakler_search_rooms'        => array(
+			'label'       => 'Anzahl Zimmer',
+			'slug'        => 'zimmer',       // URL-Parameter: von-zimmer / bis-zimmer.
+			'unit'        => '',
+			'decimals'    => 1,
+			'meta_key'    => 'anzahl_zimmer',
+			'slider_step' => 0.5,
+		),
+		'immomakler_search_pauschalmiete' => array(
+			'label'       => 'Pauschalmiete',
+			'slug'        => 'pauschalmiete', // URL-Parameter: von-pauschalmiete / bis-pauschalmiete.
+			'unit'        => '€',
+			'decimals'    => 0,
+			'meta_key'    => 'pauschalmiete',
+			'slider_step' => 100,
+		),
 	);
 }
 
 /**
- * Optional: Label in der Suche/Backend von "Status" auf "Verfügbarkeit" anpassen
- * (nur Beschriftung; Slugs/Rewrite bleiben unverändert).
+ * Filter für regionaler_zusatz (feste Liste / Dropdown).
+ * Erwartet ein Formularfeld: <select name="regionaler_zusatz">…</select>.
  */
-add_filter( 'immomakler_taxomomy_immomakler_object_status_args', 'immomakler_child_skin_status_taxonomy_labels' );
-function immomakler_child_skin_status_taxonomy_labels( $args ) {
-	if ( ! is_array( $args ) ) {
-		$args = array();
+add_action( 'pre_get_posts', 'my_immomakler_filter_by_regionaler_zusatz' );
+function my_immomakler_filter_by_regionaler_zusatz( $query ) {
+	if ( is_admin() || ! $query->is_main_query() ) {
+		return;
 	}
 
-	$labels = isset( $args['labels'] ) && is_array( $args['labels'] ) ? $args['labels'] : array();
-	$labels['name']          = 'Verfügbarkeit';
-	$labels['singular_name'] = 'Verfügbarkeit';
+	if ( $query->get( 'post_type' ) !== 'immomakler_object' ) {
+		return;
+	}
 
-	$args['labels'] = $labels;
-	return $args;
+	$regionaler_zusatz = isset( $_GET['regionaler_zusatz'] ) ? trim( wp_unslash( $_GET['regionaler_zusatz'] ) ) : '';
+
+	if ( $regionaler_zusatz === '' ) {
+		return;
+	}
+
+	$meta_query = $query->get( 'meta_query' );
+	if ( ! is_array( $meta_query ) ) {
+		$meta_query = array();
+	}
+
+	$meta_query[] = array(
+		'key'     => 'regionaler_zusatz',
+		'value'   => $regionaler_zusatz,
+		'compare' => '=',
+	);
+
+	$query->set( 'meta_query', $meta_query );
 }
 
+/**
+ * Filter für "Verfügbar ab" – ab einem gewählten Datum (einschließlich).
+ * Erwartet ein Formularfeld: <input type="date" name="verfuegbar_ab_min" …>.
+ * Da die Metadaten als 'YYYY-MM-DD' gespeichert sind, können wir DATE-Vergleiche nutzen.
+ */
+add_action( 'pre_get_posts', 'my_immomakler_filter_by_verfuegbar_ab' );
+function my_immomakler_filter_by_verfuegbar_ab( $query ) {
+	if ( is_admin() || ! $query->is_main_query() ) {
+		return;
+	}
+
+	if ( $query->get( 'post_type' ) !== 'immomakler_object' ) {
+		return;
+	}
+
+	$input = isset( $_GET['verfuegbar_ab_min'] ) ? trim( wp_unslash( $_GET['verfuegbar_ab_min'] ) ) : '';
+
+	if ( $input === '' ) {
+		return;
+	}
+
+	// Erwartetes Format: 'YYYY-MM-DD' (z. B. 2026-04-20), passend zum gespeicherten Meta-Wert.
+	$meta_query = $query->get( 'meta_query' );
+	if ( ! is_array( $meta_query ) ) {
+		$meta_query = array();
+	}
+
+	$meta_query[] = array(
+		'key'     => 'verfuegbar_ab',
+		'value'   => $input,
+		'type'    => 'DATE',
+		'compare' => '>=',
+	);
+
+	$query->set( 'meta_query', $meta_query );
+}
