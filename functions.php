@@ -1,110 +1,107 @@
 <?php
 // Hier bei Bedarf Filter und Actions für WP-ImmoMakler eintragen.
 
-// Sicherstellen, dass WP-ImmoMakler geladen ist, bevor wir seine Hooks/Meta-Felder nutzen.
-if ( defined( 'IMMOMAKLER_VERSION' ) ) {
+add_action('plugins_loaded', function () {
 
-	/**
-	 * Numerische Suchbereiche (Slider) einschränken:
-	 * - Anzahl Zimmer
-	 * - Pauschalmiete
-	 */
-	if ( ! function_exists( 'my_immomakler_search_ranges' ) ) {
-		add_filter( 'immomakler_search_enabled_ranges', 'my_immomakler_search_ranges' );
-		function my_immomakler_search_ranges( $ranges ) {
-			return array(
-				'immomakler_search_rooms'         => array(
-					'label'       => 'Anzahl Zimmer',
-					'slug'        => 'zimmer',       // URL-Parameter: von-zimmer / bis-zimmer.
-					'unit'        => '',
-					'decimals'    => 1,
-					'meta_key'    => 'anzahl_zimmer',
-					'slider_step' => 0.5,
-				),
-				'immomakler_search_pauschalmiete' => array(
-					'label'       => 'Pauschalmiete',
-					'slug'        => 'pauschalmiete', // URL-Parameter: von-pauschalmiete / bis-pauschalmiete.
-					'unit'        => '€',
-					'decimals'    => 0,
-					'meta_key'    => 'pauschalmiete',
-					'slider_step' => 100,
-				),
-			);
-		}
-	}
+    // Erst hier prüfen, ob WP-ImmoMakler wirklich geladen ist
+    if ( ! defined('IMMOMAKLER_VERSION') ) {
+        return;
+    }
 
-	/**
-	 * Filter für regionaler_zusatz (feste Liste / Dropdown).
-	 * Erwartet ein Formularfeld: <select name="regionaler_zusatz">…</select>.
-	 */
-	if ( ! function_exists( 'my_immomakler_filter_by_regionaler_zusatz' ) ) {
-		add_action( 'pre_get_posts', 'my_immomakler_filter_by_regionaler_zusatz' );
-		function my_immomakler_filter_by_regionaler_zusatz( $query ) {
-			if ( is_admin() || ! $query->is_main_query() ) {
-				return;
-			}
+    /**
+     * Numerische Suchbereiche (Slider) einschränken:
+     * - Anzahl Zimmer
+     * - Pauschalmiete
+     */
+    add_filter('immomakler_search_enabled_ranges', function ($ranges) {
+        return array(
+            'immomakler_search_rooms' => array(
+                'label'       => 'Anzahl Zimmer',
+                'slug'        => 'zimmer',
+                'unit'        => '',
+                'decimals'    => 1,
+                'meta_key'    => 'anzahl_zimmer',
+                'slider_step' => 0.5,
+            ),
+            'immomakler_search_pauschalmiete' => array(
+                'label'       => 'Pauschalmiete',
+                'slug'        => 'pauschalmiete',
+                'unit'        => '€',
+                'decimals'    => 0,
+                'meta_key'    => 'pauschalmiete',
+                'slider_step' => 100,
+            ),
+        );
+    });
 
-			if ( $query->get( 'post_type' ) !== 'immomakler_object' ) {
-				return;
-			}
+    /**
+     * Archive Headline/Subheadline ändern
+     */
+    add_filter('immomakler_archive_headline', function ($headline) {
+        if (is_post_type_archive('immomakler_object')) {
+            return 'Unsere Immobilien';
+        }
+        return $headline;
+    });
 
-			$regionaler_zusatz = isset( $_GET['regionaler_zusatz'] ) ? trim( wp_unslash( $_GET['regionaler_zusatz'] ) ) : '';
+    add_filter('immomakler_archive_subheadline', function ($subheadline) {
+        if (is_post_type_archive('immomakler_object')) {
+            return 'Alle Angebote';
+        }
+        return $subheadline;
+    });
 
-			if ( $regionaler_zusatz === '' ) {
-				return;
-			}
+    /**
+     * Filter für regionaler_zusatz
+     */
+    add_action('pre_get_posts', function ($query) {
+        if (is_admin() || ! $query->is_main_query()) return;
 
-			$meta_query = $query->get( 'meta_query' );
-			if ( ! is_array( $meta_query ) ) {
-				$meta_query = array();
-			}
+        $pt = $query->get('post_type');
+        if ($pt !== 'immomakler_object' && ! (is_array($pt) && in_array('immomakler_object', $pt, true)) ) {
+            return;
+        }
 
-			$meta_query[] = array(
-				'key'     => 'regionaler_zusatz',
-				'value'   => $regionaler_zusatz,
-				'compare' => '=',
-			);
+        $regionaler_zusatz = isset($_GET['regionaler_zusatz']) ? trim(wp_unslash($_GET['regionaler_zusatz'])) : '';
+        if ($regionaler_zusatz === '') return;
 
-			$query->set( 'meta_query', $meta_query );
-		}
-	}
+        $meta_query = $query->get('meta_query');
+        if (!is_array($meta_query)) $meta_query = array();
 
-	/**
-	 * Filter für "Verfügbar ab" – ab einem gewählten Datum (einschließlich).
-	 * Erwartet ein Formularfeld: <input type="date" name="verfuegbar_ab_min" …>.
-	 * Da die Metadaten als 'YYYY-MM-DD' gespeichert sind, können wir DATE-Vergleiche nutzen.
-	 */
-	if ( ! function_exists( 'my_immomakler_filter_by_verfuegbar_ab' ) ) {
-		add_action( 'pre_get_posts', 'my_immomakler_filter_by_verfuegbar_ab' );
-		function my_immomakler_filter_by_verfuegbar_ab( $query ) {
-			if ( is_admin() || ! $query->is_main_query() ) {
-				return;
-			}
+        $meta_query[] = array(
+            'key'     => 'regionaler_zusatz',
+            'value'   => $regionaler_zusatz,
+            'compare' => '=',
+        );
 
-			if ( $query->get( 'post_type' ) !== 'immomakler_object' ) {
-				return;
-			}
+        $query->set('meta_query', $meta_query);
+    });
 
-			$input = isset( $_GET['verfuegbar_ab_min'] ) ? trim( wp_unslash( $_GET['verfuegbar_ab_min'] ) ) : '';
+    /**
+     * Filter für "Verfügbar ab" (>= Datum)
+     */
+    add_action('pre_get_posts', function ($query) {
+        if (is_admin() || ! $query->is_main_query()) return;
 
-			if ( $input === '' ) {
-				return;
-			}
+        $pt = $query->get('post_type');
+        if ($pt !== 'immomakler_object' && ! (is_array($pt) && in_array('immomakler_object', $pt, true)) ) {
+            return;
+        }
 
-			// Erwartetes Format: 'YYYY-MM-DD' (z. B. 2026-04-20), passend zum gespeicherten Meta-Wert.
-			$meta_query = $query->get( 'meta_query' );
-			if ( ! is_array( $meta_query ) ) {
-				$meta_query = array();
-			}
+        $input = isset($_GET['verfuegbar_ab_min']) ? trim(wp_unslash($_GET['verfuegbar_ab_min'])) : '';
+        if ($input === '') return;
 
-			$meta_query[] = array(
-				'key'     => 'verfuegbar_ab',
-				'value'   => $input,
-				'type'    => 'DATE',
-				'compare' => '>=',
-			);
+        $meta_query = $query->get('meta_query');
+        if (!is_array($meta_query)) $meta_query = array();
 
-			$query->set( 'meta_query', $meta_query );
-		}
-	}
-}
+        $meta_query[] = array(
+            'key'     => 'verfuegbar_ab',
+            'value'   => $input,
+            'type'    => 'DATE',
+            'compare' => '>=',
+        );
+
+        $query->set('meta_query', $meta_query);
+    });
+
+}, 20);
