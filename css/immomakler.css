@@ -40,11 +40,11 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 /* Optional: Content nicht ganz auf volle Breite */
 .post-type-archive-immomakler_object .immomakler-archive,
 .post-type-archive-immomakler_object .immomakler {
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 20px;
-  padding-right: 20px;
+  margin-top: 2em;
+}
+
+.post-type-archive-immomakler_object .immomakler .archive-title{
+	text-transform: uppercase;
 }
 
 /* Titel-Abstände */
