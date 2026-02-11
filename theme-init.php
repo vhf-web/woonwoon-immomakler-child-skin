@@ -33,3 +33,9 @@ $custom_functions = plugin_dir_path(__FILE__) . 'functions.php';
 if ( file_exists($custom_functions) ) {
     require_once $custom_functions;
 }
+add_action('admin_notices', function () {
+    $p = plugin_dir_path(__FILE__) . 'functions.php';
+    echo '<div class="notice notice-info"><p><strong>ChildSkin theme-init.php</strong> geladen.<br>
+    functions.php gefunden: <strong>' . ( file_exists($p) ? 'JA' : 'NEIN' ) . '</strong><br>
+    Pfad: ' . esc_html($p) . '</p></div>';
+});

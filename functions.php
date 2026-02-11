@@ -1,29 +1,20 @@
 <?php
-add_action('wp_footer', function () {
-    echo "\n<!-- childskin functions.php loaded -->\n";
+add_action('admin_notices', function () {
+    echo '<div class="notice notice-info"><p><strong>ChildSkin:</strong> functions.php ist geladen.</p></div>';
 });
 
-add_action('plugins_loaded', function () {
 
-    // nur wenn WP-ImmoMakler aktiv ist
-    if ( ! defined('IMMOMAKLER_VERSION') ) {
-        return;
-    }
+
+add_action('plugins_loaded', function () {
+    if ( ! defined('IMMOMAKLER_VERSION') ) return;
 
     add_filter('immomakler_archive_headline', function ($headline) {
-        if (is_post_type_archive('immomakler_object')) {
-            return 'Unsere Immobilien';
-        }
-        return $headline;
+        return 'Unsere Immobilien';
     });
 
-    add_filter('immomakler_archive_subheadline', function ($subheadline) {
-        if (is_post_type_archive('immomakler_object')) {
-            return 'Alle Angebote';
-        }
-        return $subheadline;
+    add_filter('immomakler_archive_subheadline', function ($sub) {
+        return 'Alle Angebote';
     });
 
-	
+}, 99);
 
-}, 20);
