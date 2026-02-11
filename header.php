@@ -1,4 +1,4 @@
-<?php get_header(); ?>
+<?php get_header(); echo header woonwoon; ?>
 <!--
 Hier den zwischen dem Header des individuellen Theme-Seitentemplates
 und WP-ImmoMakler fehlenden HTML-Code einfügen.

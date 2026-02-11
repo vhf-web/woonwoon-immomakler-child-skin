@@ -1,20 +1,16 @@
 <?php
-add_action('admin_notices', function () {
-    echo '<div class="notice notice-info"><p><strong>ChildSkin:</strong> functions.php ist geladen.</p></div>';
-});
+add_filter( 'body_class', 'immomakler_body_classes' );
+/**
+ * @param string[] $classes
+ *
+ * @return string[]
+ */
+function immomakler_body_classes( array $classes ): array {
+	if ( is_immomakler_page() ) {
+		$classes[] = 'immomakler-page bla bla bla';
+	}
 
+	return $classes;
+}
 
-
-add_action('plugins_loaded', function () {
-    if ( ! defined('IMMOMAKLER_VERSION') ) return;
-
-    add_filter('immomakler_archive_headline', function ($headline) {
-        return 'Unsere Immobilien';
-    });
-
-    add_filter('immomakler_archive_subheadline', function ($sub) {
-        return 'Alle Angebote';
-    });
-
-}, 99);
 
