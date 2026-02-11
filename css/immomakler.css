@@ -39,7 +39,8 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 
 /* Optional: Content nicht ganz auf volle Breite */
 .post-type-archive-immomakler_object .immomakler-archive,
-.post-type-archive-immomakler_object .immomakler {
+.post-type-archive-immomakler_object .immomakler ,
+.immomakler-single.immomakler{
   margin-top: 2em;
 }
 

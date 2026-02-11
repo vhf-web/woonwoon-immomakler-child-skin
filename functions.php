@@ -20,4 +20,8 @@ add_action('plugins_loaded', function () {
         return $subheadline;
     });
 
+	add_action('wp_footer', function () {
+    echo "\n<!-- childskin functions.php loaded -->\n";
+});
+
 }, 20);
