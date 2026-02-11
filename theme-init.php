@@ -3,7 +3,7 @@
 Plugin Name: WP-ImmoMakler Child Skin
 Plugin URI: https://www.wp-immomakler.de
 Description: Child Skin for WP-ImmoMakler®
-Version: 1.4
+Version: 1.5
 Author: 49heroes GmbH & Co. KG
 Author URI: https://49heroes.com
 Text Domain: immomakler-child-skin
