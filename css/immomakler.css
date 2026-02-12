@@ -176,3 +176,10 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
   .immomakler .glyphicon-lock:before {
 	content: "\1F512"; /* 🔒 */
   }
+  .immomakler .glyphicon-search:before {
+  content: "\003F"; /* ? */
+}
+
+.immomakler .glyphicon-search:before {
+  content: "\2315"; /* ⌕ */
+}

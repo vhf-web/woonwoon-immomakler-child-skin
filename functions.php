@@ -88,6 +88,25 @@ function woonwoon_immomakler_hide_single_detail_keys( array $keys, $post_id ): a
 }
 
 /**
+ * Remove Kaltmiete and Kaufpreis from Objektdaten (price block).
+ * Pauschalmiete and Verfügbar ab remain (in price keys / single keys).
+ */
+add_filter( 'immomakler_property_data_single_price_keys', 'woonwoon_immomakler_hide_price_keys', 10, 2 );
+
+function woonwoon_immomakler_hide_price_keys( array $keys, $post_id ): array {
+	$remove = [
+		'kaltmiete',
+		'nettokaltmiete',
+		'kaufpreis',
+		'kaufpreisnetto',
+		'kaufpreisbrutto',
+		'kaufpreisust',
+		'kaufpreis_freitext',
+	];
+	return array_values( array_diff( $keys, $remove ) );
+}
+
+/**
  * Extend the advanced search ranges.
  *
  * - Ensure "Anzahl Zimmer" (rooms) is available.

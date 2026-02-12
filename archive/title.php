@@ -9,6 +9,6 @@
  */
 
 ?>
-<h1 class="archive-title">Our Appartments.</h1>
+<h1 class="archive-title">Our Appartments</h1>
 <h2 class="archive-subtitle"><?php echo esc_html( immomakler_archive_subheadline() ); ?></h2>
 
