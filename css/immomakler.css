@@ -58,27 +58,23 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	font-family: "Montserrat", sans-serif;
 }
 
-.single-immomakler_object .property-details .panel-heading {
-	border-width: 2px;
-	border-style: solid;
-	border-color: var(--e-global-color-primary, #000);
+.single-immomakler_object  .panel-heading {
+	
 	border-bottom: 2px solid #000;
-	padding: 20px 0;
 	text-transform: uppercase;
+	background-color: transparent;
 }
 
-.single-immomakler_object .property-details .panel-heading h2 {
+.single-immomakler_object  .panel-heading h2 {
 	margin: 0;
 }
 
 .single-immomakler_object .property-details .dt,
 .single-immomakler_object .property-details .dd {
 	font-family: "Montserrat", sans-serif;
-	font-size: 24px;
+	font-size: 20px;
 	font-weight: 400;
-	line-height: 26.4px;
-	text-align: start;
-	text-decoration-color: rgb(0, 0, 0);
+	
 }
 
 /* ======================================================================
@@ -114,6 +110,10 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	color: #ffffff;
 }
 
+
+.single-immomakler_object .property-contactform{
+	background-color:#EEE7D2;
+}
 /* ======================================================================
    Panels
    ====================================================================== */
@@ -151,3 +151,16 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 .immomakler .glyphicon-menu-right:before {
 	content: "\203A";
 }
+.immomakler .glyphicon-check:before {
+	content: "\2713"; /* ✓ */
+  }
+  
+  /* map marker */
+  .immomakler .glyphicon-map-marker:before {
+	content: "\1F4CD"; /* 📍 */
+  }
+  
+  /* lock */
+  .immomakler .glyphicon-lock:before {
+	content: "\1F512"; /* 🔒 */
+  }
