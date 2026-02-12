@@ -60,6 +60,11 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	display: none !important;
 }
 
+/* Hide taxonomy row (no "Alle Orte" dropdown) */
+.immomakler .search-taxonomies.row {
+	display: none !important;
+}
+
 /* Advanced search: filters first, then action buttons (reverse DOM order) */
 #immomakler-search-advanced {
 	display: flex;
@@ -67,6 +72,30 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 }
 #immomakler-search-advanced .panel-heading {
 	margin-bottom: 0;
+}
+
+/* All filters in one line: Zimmer, Pauschalmiete, Verfügbar ab, Ortsteil */
+.immomakler .search-ranges.row {
+	display: flex;
+	flex-wrap: nowrap;
+}
+.immomakler .search-ranges.row > .immomakler-search-range,
+.immomakler .search-ranges.row > .immomakler-search-regionaler-zusatz {
+	flex: 0 0 25%;
+	max-width: 25%;
+}
+.immomakler .search-ranges.row .range-label {
+	display: block;
+}
+@media (max-width: 767px) {
+	.immomakler .search-ranges.row {
+		flex-wrap: wrap;
+	}
+	.immomakler .search-ranges.row > .immomakler-search-range,
+	.immomakler .search-ranges.row > .immomakler-search-regionaler-zusatz {
+		flex: 0 0 100%;
+		max-width: 100%;
+	}
 }
 
 /* ======================================================================

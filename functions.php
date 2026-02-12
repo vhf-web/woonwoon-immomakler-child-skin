@@ -64,6 +64,17 @@ function woonwoon_immomakler_search_hide_taxonomies( array $taxonomies ): array 
 }
 
 /**
+ * Remove "Alle Orte" (and any taxonomy) dropdown from search form.
+ * Plugin may override enabled_taxonomies via option "search_show_taxonomies";
+ * by hooking the row we skip the dropdown loop entirely.
+ */
+add_action( 'immomakler_search_taxonomies_row', 'woonwoon_immomakler_search_no_taxonomy_dropdowns', 5 );
+
+function woonwoon_immomakler_search_no_taxonomy_dropdowns() {
+	// Intentionally output nothing so no "Alle Orte" or other taxonomy dropdowns appear.
+}
+
+/**
  * Remove some single-property detail fields from "Objektdaten".
  *
  * Removed:
@@ -145,6 +156,24 @@ function woonwoon_immomakler_search_ranges( array $ranges ): array {
 }
 
 /**
+ * Clear range transients once so Pauschalmiete/Verfügbar ab sliders get correct min/max (avoid NaN).
+ */
+add_action( 'init', 'woonwoon_immomakler_clear_search_range_transients_once', 5 );
+
+function woonwoon_immomakler_clear_search_range_transients_once() {
+	if ( get_option( 'woonwoon_cleared_search_transients', false ) ) {
+		return;
+	}
+	delete_transient( 'immomakler_upto_value_max_pauschalmiete' );
+	delete_transient( 'immomakler_upto_value_max_verfuegbar_ab' );
+	delete_transient( 'immomakler_max_meta_value_pauschalmiete' );
+	delete_transient( 'immomakler_min_meta_value_pauschalmiete' );
+	delete_transient( 'immomakler_max_meta_value_verfuegbar_ab' );
+	delete_transient( 'immomakler_min_meta_value_verfuegbar_ab' );
+	update_option( 'woonwoon_cleared_search_transients', true );
+}
+
+/**
  * Fix NaN on Pauschalmiete/Verfügbar-ab sliders when DB has no or non-numeric values.
  * Plugin uses CAST(meta_value AS UNSIGNED) so empty or date strings yield NULL → 0 → broken slider.
  */
@@ -189,11 +218,16 @@ function woonwoon_immomakler_search_query_vars( array $vars ): array {
 add_action( 'immomakler_search_form_after_ranges', 'woonwoon_immomakler_search_regionaler_zusatz_field' );
 
 function woonwoon_immomakler_search_regionaler_zusatz_field() {
-	$value = isset( $_GET['regionaler_zusatz'] ) ? sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) ) : '';
+	$value = '';
+	if ( isset( $_GET['regionaler_zusatz'] ) ) {
+		$value = sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) );
+	} elseif ( isset( $_POST['regionaler_zusatz'] ) ) {
+		$value = sanitize_text_field( wp_unslash( $_POST['regionaler_zusatz'] ) );
+	}
 	?>
-	<div class="immomakler-search-regionaler-zusatz row col-xs-12 col-sm-3" style="margin-top: 1em;">
-		<label for="immomakler-search-regionaler-zusatz"><?php esc_html_e( 'Ortsteil / Bezirk', 'immomakler' ); ?></label>
-		<input type="text" name="regionaler_zusatz" id="immomakler-search-regionaler-zusatz" class="form-control" value="<?php echo esc_attr( $value ); ?>" placeholder="<?php esc_attr_e( 'z.B. Mitte, Nord', 'immomakler' ); ?>">
+	<div class="immomakler-search-regionaler-zusatz col-xs-12 col-sm-3">
+		<label for="immomakler-search-regionaler-zusatz" class="range-label"><?php esc_html_e( 'Ortsteil / Bezirk', 'immomakler' ); ?></label>
+		<input type="text" name="regionaler_zusatz" id="immomakler-search-regionaler-zusatz" class="form-control" value="<?php echo esc_attr( $value ); ?>" placeholder="<?php esc_attr_e( 'z.B. Kreuzberg, Mitte', 'immomakler' ); ?>">
 	</div>
 	<?php
 }
@@ -213,17 +247,18 @@ function woonwoon_immomakler_search_meta_query_fixes( WP_Query $query ) {
 		$meta_query = [];
 	}
 
-	// Regionaler Zusatz: text filter (from query var or GET)
+	// Regionaler Zusatz: search meta AND location taxonomy (e.g. "Kreuzberg" in Ortsteil or as Ort).
 	$regionaler = $query->get( 'regionaler_zusatz' );
 	if ( ( $regionaler === '' || $regionaler === null ) && isset( $_GET['regionaler_zusatz'] ) ) {
 		$regionaler = sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) );
 	}
+	if ( ( $regionaler === '' || $regionaler === null ) && isset( $_POST['regionaler_zusatz'] ) ) {
+		$regionaler = sanitize_text_field( wp_unslash( $_POST['regionaler_zusatz'] ) );
+	}
 	if ( $regionaler !== '' && $regionaler !== null ) {
-		$meta_query[] = [
-			'key'     => 'regionaler_zusatz',
-			'value'   => $regionaler,
-			'compare' => 'LIKE',
-		];
+		// Use posts_where so we can match (meta LIKE OR location term name LIKE).
+		$GLOBALS['woonwoon_regionaler_search'] = $regionaler;
+		add_filter( 'posts_where', 'woonwoon_immomakler_posts_where_regionaler_zusatz', 10, 2 );
 	}
 
 	// Replace verfuegbar_ab numeric clause with DATE comparison (plugin stores YYYY-MM-DD)
@@ -259,6 +294,37 @@ function woonwoon_immomakler_search_meta_query_fixes( WP_Query $query ) {
 		$filtered[] = $clause;
 	}
 	$query->set( 'meta_query', $filtered );
+}
+
+/**
+ * posts_where: Ortsteil/Bezirk = meta regionaler_zusatz LIKE OR location taxonomy term name LIKE.
+ * So "Kreuzberg" finds posts with meta "Kreuzberg" or with Ort (immomakler_object_location) "Kreuzberg".
+ */
+function woonwoon_immomakler_posts_where_regionaler_zusatz( string $where, WP_Query $query ): string {
+	$regionaler = isset( $GLOBALS['woonwoon_regionaler_search'] ) ? $GLOBALS['woonwoon_regionaler_search'] : '';
+	if ( $regionaler === '' || $query->get( 'post_type' ) !== 'immomakler_object' ) {
+		remove_filter( 'posts_where', 'woonwoon_immomakler_posts_where_regionaler_zusatz', 10 );
+		return $where;
+	}
+	global $wpdb;
+	$like = '%' . $wpdb->esc_like( $regionaler ) . '%';
+	$meta_ids = $wpdb->prepare(
+		"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'regionaler_zusatz' AND meta_value LIKE %s",
+		$like
+	);
+	$location_tax = apply_filters( 'immomakler_location_taxonomy', 'immomakler_object_location' );
+	$term_ids_sub = $wpdb->prepare(
+		"SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+		INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+		INNER JOIN {$wpdb->terms} t ON tt.term_id = t.term_id
+		WHERE tt.taxonomy = %s AND t.name LIKE %s",
+		$location_tax,
+		$like
+	);
+	$where .= " AND ( {$wpdb->posts}.ID IN ({$meta_ids}) OR {$wpdb->posts}.ID IN ({$term_ids_sub}) )";
+	unset( $GLOBALS['woonwoon_regionaler_search'] );
+	remove_filter( 'posts_where', 'woonwoon_immomakler_posts_where_regionaler_zusatz', 10 );
+	return $where;
 }
 
 /**
