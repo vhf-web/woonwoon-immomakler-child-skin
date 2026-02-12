@@ -107,34 +107,39 @@ function woonwoon_immomakler_hide_price_keys( array $keys, $post_id ): array {
 }
 
 /**
- * Extend the advanced search ranges.
- *
- * - Ensure "Anzahl Zimmer" (rooms) is available.
- * - Add a simple range for "Verfügbar ab" (by date as text).
- *   Note: this uses the 'verfuegbar_ab' meta; comparison is handled
- *   by WP-ImmoMakler based on the configured range.
+ * Advanced search: only Zimmer, Pauschalmiete, Verfügbar ab.
+ * (Fläche, Kaltmiete, Kaufpreis removed.)
  */
-add_filter( 'immomakler_search_enabled_ranges', 'woonwoon_immomakler_search_ranges' );
+add_filter( 'immomakler_search_enabled_ranges', 'woonwoon_immomakler_search_ranges', 20 );
 
 function woonwoon_immomakler_search_ranges( array $ranges ): array {
-	// Keep existing ranges, just make sure rooms is present with our label if needed.
-	$ranges['immomakler_search_rooms']['label']    = __( 'Zimmer', 'immomakler' );
-	$ranges['immomakler_search_rooms']['slug']     = 'zimmer';
-	$ranges['immomakler_search_rooms']['meta_key'] = 'anzahl_zimmer';
-
-	// Add a simple "Verfügbar ab" range (from / to date as string).
-	if ( ! isset( $ranges['immomakler_search_available_from'] ) ) {
-		$ranges['immomakler_search_available_from'] = [
+	$currency = \immomakler_get_currency_from_iso( ImmoMakler_Options::get( 'default_currency_iso' ) );
+	return [
+		'immomakler_search_rooms'      => [
+			'label'       => __( 'Zimmer', 'immomakler' ),
+			'slug'        => 'zimmer',
+			'unit'        => '',
+			'decimals'    => 1,
+			'meta_key'    => 'anzahl_zimmer',
+			'slider_step' => 0.5,
+		],
+		'immomakler_search_pauschalmiete' => [
+			'label'       => __( 'Pauschalmiete', 'immomakler' ),
+			'slug'        => 'pauschalmiete',
+			'unit'        => $currency,
+			'decimals'    => 0,
+			'meta_key'    => 'pauschalmiete',
+			'slider_step' => 100,
+		],
+		'immomakler_search_verfuegbar_ab' => [
 			'label'       => __( 'Verfügbar ab', 'immomakler' ),
 			'slug'        => 'verfuegbar_ab',
 			'unit'        => '',
 			'decimals'    => 0,
 			'meta_key'    => 'verfuegbar_ab',
 			'slider_step' => 1,
-		];
-	}
-
-	return $ranges;
+		],
+	];
 }
 
 

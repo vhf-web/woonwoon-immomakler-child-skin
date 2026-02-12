@@ -60,6 +60,15 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	display: none !important;
 }
 
+/* Advanced search: filters first, then action buttons (reverse DOM order) */
+#immomakler-search-advanced {
+	display: flex;
+	flex-direction: column-reverse;
+}
+#immomakler-search-advanced .panel-heading {
+	margin-bottom: 0;
+}
+
 /* ======================================================================
    Single: property-details panel
    ====================================================================== */
@@ -82,7 +91,6 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 .single-immomakler_object .property-details .dt,
 .single-immomakler_object .property-details .dd {
 	font-family: "Montserrat", sans-serif;
-	font-size: 20px;
 	font-weight: 400;
 	
 }
