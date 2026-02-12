@@ -6,14 +6,12 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
    TYPOGRAFIE (Elementor Global Styles)
    ========================================================================== */
 
-/* Archive / Listenansicht: Typografie wie "Text" (Elementor globale Typografie) */
+/* Archive / Listenansicht + Detailseiten: Einheitliche Typografie Montserrat */
 .post-type-archive-immomakler_object .immomakler,
-.post-type-archive-immomakler_object .immomakler-archive,
-.post-type-archive-immomakler_object .immomakler-object,
-.post-type-archive-immomakler_object .immomakler-object * {
-	font-family: var(--e-global-typography-text-font-family, inherit), Sans-serif;
-	font-size: var(--e-global-typography-text-font-size, inherit);
-	font-weight: var(--e-global-typography-text-font-weight, inherit);
+.post-type-archive-immomakler_object .immomakler * ,
+.single-immomakler_object .immomakler,
+.single-immomakler_object .immomakler * {
+	font-family: "Montserrat", sans-serif;
 }
 
 /* Detailseite (immobilien/*): Property Title wie "Primary" + Primärfarbe */
@@ -51,3 +49,68 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 /* Titel-Abstände */
 .post-type-archive-immomakler_object .archive-title { margin: 0 0 10px; }
 .post-type-archive-immomakler_object .archive-subtitle { margin: 0 0 20px; }
+
+/* ======================================================================
+   Single: property-details panel
+   ====================================================================== */
+
+.single-immomakler_object .property-details {
+	font-family: "Montserrat", sans-serif;
+}
+
+.single-immomakler_object .property-details .panel-heading {
+	border-width: 2px;
+	border-style: solid;
+	border-color: var(--e-global-color-primary, #000);
+	border-bottom: 2px solid #000;
+	padding: 20px 0;
+	text-transform: uppercase;
+}
+
+.single-immomakler_object .property-details .panel-heading h2 {
+	margin: 0;
+}
+
+.single-immomakler_object .property-details .dt,
+.single-immomakler_object .property-details .dd {
+	font-family: "Montserrat", sans-serif;
+	font-size: 24px;
+	font-weight: 400;
+	line-height: 26.4px;
+	text-align: start;
+	text-decoration-color: rgb(0, 0, 0);
+}
+
+/* ======================================================================
+   Single: property-actions buttons
+   ====================================================================== */
+
+.single-immomakler_object .property-actions.btn-group .btn {
+	background-color: rgba(255, 255, 255, 0);
+	border-color: rgb(255, 255, 255);
+	border-width: 2px;
+	border-style: solid;
+	border-radius: 0;
+	box-shadow: none;
+	box-sizing: border-box;
+	color: rgb(255, 255, 255);
+	fill: rgb(255, 255, 255);
+	cursor: pointer;
+	display: inline-block;
+	font-family: "Montserrat", sans-serif;
+	font-size: 19.2px;
+	font-weight: 500;
+	line-height: 19.2px;
+	padding: 12px 24px;
+	height: auto;
+	text-align: center;
+}
+
+/* Primary contact button: filled in primary color, text white */
+.single-immomakler_object .property-actions.btn-group .btn.btn-primary {
+	background-color: #445D83;
+	border-color: #445D83;
+	color: #ffffff;
+}
+
+

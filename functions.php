@@ -39,17 +39,49 @@ function woonwoon_immomakler_remove_vermarktung_taxonomy( array $taxonomies ): a
 }
 
 /**
- * Hide "Kauf/Miete" (immomakler_object_vermarktung) from the search form.
+ * Hide taxonomy dropdowns in the ImmoMakler search form.
  *
- * This uses the official search filter so the first dropdown in
- * the ImmoMakler search form no longer shows Kauf/Miete at all.
- * All your objects are Miete, so this filter is unnecessary there.
+ * We remove:
+ * - immomakler_object_vermarktung (Kauf/Miete)
+ * - immomakler_object_nutzungsart
+ * - immomakler_object_type
  */
-add_filter( 'immomakler_search_enabled_taxonomies', 'woonwoon_immomakler_search_hide_vermarktung' );
+add_filter( 'immomakler_search_enabled_taxonomies', 'woonwoon_immomakler_search_hide_taxonomies' );
 
-function woonwoon_immomakler_search_hide_vermarktung( array $taxonomies ): array {
-	$taxonomies = array_diff( $taxonomies, [ 'immomakler_object_vermarktung' ] );
+function woonwoon_immomakler_search_hide_taxonomies( array $taxonomies ): array {
+	$taxonomies = array_diff(
+		$taxonomies,
+		[
+			'immomakler_object_vermarktung',
+			'immomakler_object_nutzungsart',
+			'immomakler_object_type',
+		]
+	);
+
 	return array_values( $taxonomies );
 }
 
+/**
+ * Remove some single-property detail fields from "Objektdaten".
+ *
+ * Removed:
+ * - Objekt-ID (objektnr_extern)
+ * - Objekttyp (objekt_typen)
+ * - Adresse (adresse)
+ * - Mindestmietdauer (min_mietdauer)
+ * - Maximale Mietdauer (max_mietdauer)
+ */
+add_filter( 'immomakler_property_data_single_keys', 'woonwoon_immomakler_hide_single_detail_keys', 10, 2 );
+
+function woonwoon_immomakler_hide_single_detail_keys( array $keys, $post_id ): array {
+	$remove = [
+		'objektnr_extern',
+		'objekt_typen',
+		'adresse',
+		'min_mietdauer',
+		'max_mietdauer',
+	];
+
+	return array_values( array_diff( $keys, $remove ) );
+}
 
