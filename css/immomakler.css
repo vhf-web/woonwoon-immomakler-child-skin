@@ -50,6 +50,16 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 .post-type-archive-immomakler_object .archive-title { margin: 0 0 10px; }
 .post-type-archive-immomakler_object .archive-subtitle { margin: 0 0 20px; }
 
+/* Archive search: hide Suchagenten panel and paginator row */
+#immomakler-search-agents-panel,
+.immomakler [id$="immomakler-search-agents-panel"] {
+	display: none !important;
+}
+.immomakler-archive .paginator.row,
+.immomakler .paginator.row {
+	display: none !important;
+}
+
 /* ======================================================================
    Single: property-details panel
    ====================================================================== */
@@ -100,7 +110,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	padding: 12px 24px;
 	height: auto;
 	text-align: center;
-	margin-right: 15px;
+	margin-right: 11px;
 }
 
 /* Primary contact button: filled in primary color, text white */
@@ -122,7 +132,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	border: none;
 }
 
-.immomakler .panel-heading {
+.immomakler .panel-default>.panel-heading {
 	border-bottom: 2px solid #000;
 	background: transparent;
 	margin-bottom: 20px;
@@ -134,7 +144,9 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	font-weight: 400;
 	text-transform: uppercase;
 }
-
+.immomakler label{
+	font-weight:400;
+}
 /* ======================================================================
    Icons (Glyphicons): use Unicode so they work without Bootstrap 3 icon font
    ====================================================================== */

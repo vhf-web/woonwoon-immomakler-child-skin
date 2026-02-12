@@ -70,6 +70,7 @@ function woonwoon_immomakler_search_hide_taxonomies( array $taxonomies ): array 
  * - Adresse (adresse)
  * - Mindestmietdauer (min_mietdauer)
  * - Maximale Mietdauer (max_mietdauer)
+ * - Energieträger (energietraeger)
  */
 add_filter( 'immomakler_property_data_single_keys', 'woonwoon_immomakler_hide_single_detail_keys', 10, 2 );
 
@@ -80,6 +81,7 @@ function woonwoon_immomakler_hide_single_detail_keys( array $keys, $post_id ): a
 		'adresse',
 		'min_mietdauer',
 		'max_mietdauer',
+		'energietraeger',
 	];
 
 	return array_values( array_diff( $keys, $remove ) );
