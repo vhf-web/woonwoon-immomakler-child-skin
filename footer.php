@@ -6,7 +6,6 @@ Unterscheidung von Listenansicht und Detailansicht:
 if( is_immomakler_single() ) { ... } else { ... }
 -->
 <?php
-echo "Footer Woonwoon";
 get_footer(); 
 
 ?>
