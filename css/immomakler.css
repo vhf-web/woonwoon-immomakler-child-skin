@@ -87,13 +87,13 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 
 .single-immomakler_object .property-actions.btn-group .btn {
 	background-color: rgba(255, 255, 255, 0);
-	border-color: rgb(255, 255, 255);
+	border-color: #000;
 	border-width: 2px;
 	border-style: solid;
 	border-radius: 0;
 	box-shadow: none;
 	box-sizing: border-box;
-	color: rgb(255, 255, 255);
+	color: #000;
 	fill: rgb(255, 255, 255);
 	cursor: pointer;
 	display: inline-block;
@@ -104,6 +104,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	padding: 12px 24px;
 	height: auto;
 	text-align: center;
+	margin-right: 15px;
 }
 
 /* Primary contact button: filled in primary color, text white */
