@@ -5,21 +5,14 @@
  */
 
 /**
- * Force ImmoMakler titles to a fixed label.
+ * Change ONLY the archive subtitle ("Alle Immobilien") to a fixed label.
  *
- * This affects the big H1 title in the ImmoMakler templates
- * and also places where immomakler_single_title() /
- * immomakler_archive_title() are used.
+ * This is the small H2 under the big "Immobilienangebot" headline
+ * on the archive page. Single property titles remain untouched.
  */
-add_filter( 'immomakler_single_title', 'woonwoon_immomakler_title_override' );
-add_filter( 'immomakler_archive_title', 'woonwoon_immomakler_title_override' );
+add_filter( 'immomakler_archive_subheadline', 'woonwoon_immomakler_archive_subheadline' );
 
-/**
- * @param string $title Original title.
- *
- * @return string
- */
-function woonwoon_immomakler_title_override( string $title ): string {
+function woonwoon_immomakler_archive_subheadline( string $title ): string {
 	return 'Appartments';
 }
 
@@ -44,4 +37,19 @@ function woonwoon_immomakler_remove_vermarktung_taxonomy( array $taxonomies ): a
 	// Re-index array keys to keep it clean.
 	return array_values( $taxonomies );
 }
+
+/**
+ * Hide "Kauf/Miete" (immomakler_object_vermarktung) from the search form.
+ *
+ * This uses the official search filter so the first dropdown in
+ * the ImmoMakler search form no longer shows Kauf/Miete at all.
+ * All your objects are Miete, so this filter is unnecessary there.
+ */
+add_filter( 'immomakler_search_enabled_taxonomies', 'woonwoon_immomakler_search_hide_vermarktung' );
+
+function woonwoon_immomakler_search_hide_vermarktung( array $taxonomies ): array {
+	$taxonomies = array_diff( $taxonomies, [ 'immomakler_object_vermarktung' ] );
+	return array_values( $taxonomies );
+}
+
 
