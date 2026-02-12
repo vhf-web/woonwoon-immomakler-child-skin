@@ -45,6 +45,7 @@ function woonwoon_immomakler_remove_vermarktung_taxonomy( array $taxonomies ): a
  * - immomakler_object_vermarktung (Kauf/Miete)
  * - immomakler_object_nutzungsart
  * - immomakler_object_type
+ * - immomakler_object_location (Ort)
  */
 add_filter( 'immomakler_search_enabled_taxonomies', 'woonwoon_immomakler_search_hide_taxonomies' );
 
@@ -55,6 +56,7 @@ function woonwoon_immomakler_search_hide_taxonomies( array $taxonomies ): array 
 			'immomakler_object_vermarktung',
 			'immomakler_object_nutzungsart',
 			'immomakler_object_type',
+			'immomakler_object_location',
 		]
 	);
 
@@ -142,4 +144,138 @@ function woonwoon_immomakler_search_ranges( array $ranges ): array {
 	];
 }
 
+/**
+ * Fix NaN on Pauschalmiete/Verfügbar-ab sliders when DB has no or non-numeric values.
+ * Plugin uses CAST(meta_value AS UNSIGNED) so empty or date strings yield NULL → 0 → broken slider.
+ */
+add_filter( 'immomakler_search_min_meta_value', 'woonwoon_immomakler_search_min_meta_value', 10, 2 );
+add_filter( 'immomakler_search_max_meta_value', 'woonwoon_immomakler_search_max_meta_value', 10, 2 );
+
+function woonwoon_immomakler_search_min_meta_value( $value, string $meta_key ) {
+	if ( $meta_key === 'pauschalmiete' && ( $value === null || $value === '' ) ) {
+		return 0;
+	}
+	if ( $meta_key === 'verfuegbar_ab' && ( $value === null || $value === '' ) ) {
+		return 20200101; // YYYYMMDD so slider shows years
+	}
+	return $value;
+}
+
+function woonwoon_immomakler_search_max_meta_value( $value, string $meta_key ) {
+	if ( $meta_key === 'pauschalmiete' && ( $value === null || $value === '' || (float) $value <= 0 ) ) {
+		delete_transient( 'immomakler_upto_value_max_pauschalmiete' );
+		return 5000; // fallback max so slider range is 0–5000
+	}
+	if ( $meta_key === 'verfuegbar_ab' && ( $value === null || $value === '' || (float) $value <= 0 ) ) {
+		delete_transient( 'immomakler_upto_value_max_verfuegbar_ab' );
+		return 20301231; // YYYYMMDD
+	}
+	return $value;
+}
+
+/**
+ * Register search query vars so GET params are available on the main query.
+ */
+add_filter( 'query_vars', 'woonwoon_immomakler_search_query_vars' );
+
+function woonwoon_immomakler_search_query_vars( array $vars ): array {
+	$vars[] = 'regionaler_zusatz';
+	return $vars;
+}
+
+/**
+ * Add "Regionaler Zusatz" (Ortsteil/Bezirk) text field to advanced search.
+ */
+add_action( 'immomakler_search_form_after_ranges', 'woonwoon_immomakler_search_regionaler_zusatz_field' );
+
+function woonwoon_immomakler_search_regionaler_zusatz_field() {
+	$value = isset( $_GET['regionaler_zusatz'] ) ? sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) ) : '';
+	?>
+	<div class="immomakler-search-regionaler-zusatz row col-xs-12 col-sm-3" style="margin-top: 1em;">
+		<label for="immomakler-search-regionaler-zusatz"><?php esc_html_e( 'Ortsteil / Bezirk', 'immomakler' ); ?></label>
+		<input type="text" name="regionaler_zusatz" id="immomakler-search-regionaler-zusatz" class="form-control" value="<?php echo esc_attr( $value ); ?>" placeholder="<?php esc_attr_e( 'z.B. Mitte, Nord', 'immomakler' ); ?>">
+	</div>
+	<?php
+}
+
+/**
+ * Apply search: regionaler_zusatz (LIKE), and fix verfuegbar_ab to DATE comparison.
+ * Runs after the plugin's apply_ranges (100).
+ */
+add_action( 'pre_get_posts', 'woonwoon_immomakler_search_meta_query_fixes', 101 );
+
+function woonwoon_immomakler_search_meta_query_fixes( WP_Query $query ) {
+	if ( $query->get( 'post_type' ) !== 'immomakler_object' ) {
+		return;
+	}
+	$meta_query = $query->get( 'meta_query' );
+	if ( ! is_array( $meta_query ) ) {
+		$meta_query = [];
+	}
+
+	// Regionaler Zusatz: text filter (from query var or GET)
+	$regionaler = $query->get( 'regionaler_zusatz' );
+	if ( ( $regionaler === '' || $regionaler === null ) && isset( $_GET['regionaler_zusatz'] ) ) {
+		$regionaler = sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) );
+	}
+	if ( $regionaler !== '' && $regionaler !== null ) {
+		$meta_query[] = [
+			'key'     => 'regionaler_zusatz',
+			'value'   => $regionaler,
+			'compare' => 'LIKE',
+		];
+	}
+
+	// Replace verfuegbar_ab numeric clause with DATE comparison (plugin stores YYYY-MM-DD)
+	$von = $query->get( 'von-verfuegbar_ab' );
+	$bis = $query->get( 'bis-verfuegbar_ab' );
+	if ( ( $von === '' || $von === null ) && isset( $_GET['von-verfuegbar_ab'] ) ) {
+		$von = sanitize_text_field( wp_unslash( $_GET['von-verfuegbar_ab'] ) );
+	}
+	if ( ( $bis === '' || $bis === null ) && isset( $_GET['bis-verfuegbar_ab'] ) ) {
+		$bis = sanitize_text_field( wp_unslash( $_GET['bis-verfuegbar_ab'] ) );
+	}
+	$von_num = abs( (int) $von );
+	$bis_num = abs( (int) $bis );
+	$default_max = 20301231;
+	if ( $bis_num <= 0 ) {
+		$bis_num = $default_max;
+	}
+	$filtered = [];
+	foreach ( $meta_query as $clause ) {
+		$key = isset( $clause['key'] ) ? $clause['key'] : '';
+		if ( $key === 'verfuegbar_ab' ) {
+			// Replace with DATE comparison
+			$from_date = woonwoon_immomakler_yyyymmdd_to_date( $von_num ? $von_num : 20200101 );
+			$to_date   = woonwoon_immomakler_yyyymmdd_to_date( $bis_num );
+			$filtered[] = [
+				'key'     => 'verfuegbar_ab',
+				'value'   => [ $from_date, $to_date ],
+				'type'    => 'DATE',
+				'compare' => 'BETWEEN',
+			];
+			continue;
+		}
+		$filtered[] = $clause;
+	}
+	$query->set( 'meta_query', $filtered );
+}
+
+/**
+ * Convert YYYYMMDD number to YYYY-MM-DD string.
+ */
+function woonwoon_immomakler_yyyymmdd_to_date( $num ) {
+	$num = (int) $num;
+	if ( $num <= 0 ) {
+		return '2020-01-01';
+	}
+	$y = (int) floor( $num / 10000 );
+	$m = (int) floor( ( $num % 10000 ) / 100 );
+	$d = (int) ( $num % 100 );
+	if ( $m < 1 ) { $m = 1; }
+	if ( $m > 12 ) { $m = 12; }
+	if ( $d < 1 ) { $d = 1; }
+	if ( $d > 31 ) { $d = 31; }
+	return sprintf( '%04d-%02d-%02d', $y, $m, $d );
+}
 
