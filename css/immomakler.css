@@ -1,3 +1,53 @@
 /* Eigene CSS-Angaben für WP-ImmoMakler.
 Wird nach dem mitgelieferten Plugin-CSS geladen,
 Sie können somit die CSS-Angaben überschreiben oder ergänzen */
+
+/* ==========================================================================
+   TYPOGRAFIE (Elementor Global Styles)
+   ========================================================================== */
+
+/* Archive / Listenansicht: Typografie wie "Text" (Elementor globale Typografie) */
+.post-type-archive-immomakler_object .immomakler,
+.post-type-archive-immomakler_object .immomakler-archive,
+.post-type-archive-immomakler_object .immomakler-object,
+.post-type-archive-immomakler_object .immomakler-object * {
+	font-family: var(--e-global-typography-text-font-family, inherit), Sans-serif;
+	font-size: var(--e-global-typography-text-font-size, inherit);
+	font-weight: var(--e-global-typography-text-font-weight, inherit);
+}
+
+/* Detailseite (immobilien/*): Property Title wie "Primary" + Primärfarbe */
+.single-immomakler_object .immomakler-single-title,
+.single-immomakler_object .immomakler-property-title,
+.single-immomakler_object .immomakler-single h1,
+.single-immomakler_object .immomakler h1 {
+	font-family: var(--e-global-typography-primary-font-family, inherit), Sans-serif;
+	font-size: var(--e-global-typography-primary-font-size, inherit);
+	font-weight: var(--e-global-typography-primary-font-weight, inherit);
+	text-transform: var(--e-global-typography-primary-text-transform, none);
+	line-height: var(--e-global-typography-primary-line-height, normal);
+	letter-spacing: var(--e-global-typography-primary-letter-spacing, normal);
+	word-spacing: var(--e-global-typography-primary-word-spacing, normal);
+	color: var(--e-global-color-primary, inherit);
+}
+
+/* Abstand oben/unten für die gesamte Archivansicht */
+.post-type-archive-immomakler_object .immomakler:contentReference[oaicite:8]{index=8}rchive-immomakler_object .immomakler {
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+/* Optional: Content nicht ganz auf volle Breite */
+.post-type-archive-immomakler_object .immomakler-archive,
+.post-type-archive-immomakler_object .immomakler ,
+.immomakler-single.immomakler{
+  margin-top: 2em;
+}
+
+.post-type-archive-immomakler_object .immomakler .archive-title{
+	text-transform: uppercase;
+}
+
+/* Titel-Abstände */
+.post-type-archive-immomakler_object .archive-title { margin: 0 0 10px; }
+.post-type-archive-immomakler_object .archive-subtitle { margin: 0 0 20px; }
