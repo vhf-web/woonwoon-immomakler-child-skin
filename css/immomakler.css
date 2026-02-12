@@ -114,4 +114,40 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	color: #ffffff;
 }
 
+/* ======================================================================
+   Panels
+   ====================================================================== */
 
+.immomakler .panel-default {
+	border: none;
+}
+
+.immomakler .panel-heading {
+	border-bottom: 2px solid #000;
+	background: transparent;
+	margin-bottom: 20px;
+}
+
+.immomakler-single .panel-heading h2 {
+	font-size: 2rem;
+	padding: 0;
+	font-weight: 400;
+	text-transform: uppercase;
+}
+
+/* ======================================================================
+   Icons (Glyphicons): use Unicode so they work without Bootstrap 3 icon font
+   ====================================================================== */
+
+.immomakler .glyphicon-list:before {
+	content: "\2630";
+}
+.immomakler .glyphicon-unchecked:before {
+	content: "\2610";
+}
+.immomakler .glyphicon-menu-left:before {
+	content: "\2039";
+}
+.immomakler .glyphicon-menu-right:before {
+	content: "\203A";
+}
