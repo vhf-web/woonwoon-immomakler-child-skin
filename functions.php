@@ -158,5 +158,52 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 		];
 	}
 
+	// --- Pauschalmiete slider fallback ---
+	// Some imports use different price keys; filter across common rent fields.
+	$von_raw = $query->get( 'von-pauschalmiete' );
+	$bis_raw = $query->get( 'bis-pauschalmiete' );
+	if ( $von_raw === null || $von_raw === '' ) $von_raw = isset( $_GET['von-pauschalmiete'] ) ? trim( wp_unslash( $_GET['von-pauschalmiete'] ) ) : '';
+	if ( $bis_raw === null || $bis_raw === '' ) $bis_raw = isset( $_GET['bis-pauschalmiete'] ) ? trim( wp_unslash( $_GET['bis-pauschalmiete'] ) ) : '';
+	if ( $von_raw === null || $von_raw === '' ) $von_raw = isset( $_POST['von-pauschalmiete'] ) ? trim( wp_unslash( $_POST['von-pauschalmiete'] ) ) : '';
+	if ( $bis_raw === null || $bis_raw === '' ) $bis_raw = isset( $_POST['bis-pauschalmiete'] ) ? trim( wp_unslash( $_POST['bis-pauschalmiete'] ) ) : '';
+
+	$has_price_filter = ( $von_raw !== '' || $bis_raw !== '' );
+	if ( $has_price_filter ) {
+		$von = abs( floatval( str_replace( ',', '.', (string) $von_raw ) ) );
+		$bis = abs( floatval( str_replace( ',', '.', (string) $bis_raw ) ) );
+
+		if ( $bis > 0 && $von <= $bis ) {
+			// Remove plugin's single-key pauschalmiete clause, then add our fallback OR group.
+			foreach ( $meta_query as $key => $clause ) {
+				if ( $key === 'relation' || ! is_array( $clause ) ) continue;
+				if ( isset( $clause['key'] ) && $clause['key'] === 'pauschalmiete' ) {
+					unset( $meta_query[ $key ] );
+				}
+			}
+
+			$meta_query[] = [
+				'relation' => 'OR',
+				[
+					'key'     => 'pauschalmiete',
+					'value'   => [ $von, $bis ],
+					'type'    => 'NUMERIC',
+					'compare' => 'BETWEEN',
+				],
+				[
+					'key'     => 'warmmiete',
+					'value'   => [ $von, $bis ],
+					'type'    => 'NUMERIC',
+					'compare' => 'BETWEEN',
+				],
+				[
+					'key'     => 'preis',
+					'value'   => [ $von, $bis ],
+					'type'    => 'NUMERIC',
+					'compare' => 'BETWEEN',
+				],
+			];
+		}
+	}
+
 	$query->set( 'meta_query', $meta_query );
 }
