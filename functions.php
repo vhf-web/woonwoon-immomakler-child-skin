@@ -18,6 +18,26 @@ add_filter( 'immomakler_search_enabled_taxonomies', function ( $taxonomies ) {
 } );
 add_action( 'immomakler_search_taxonomies_row', function () {}, 5 );
 
+// Ensure custom/rent-related keys are indexed for searchable meta queries.
+add_filter( 'immomakler_searchable_postmeta_keys', function ( $keys ) {
+	if ( ! is_array( $keys ) ) {
+		$keys = [];
+	}
+	return array_values(
+		array_unique(
+			array_merge(
+				$keys,
+				[
+					'pauschalmiete',
+					'warmmiete',
+					'preis',
+					'regionaler_zusatz',
+				]
+			)
+		)
+	);
+} );
+
 // Search ranges: keep Zimmer + Fläche from plugin, add Pauschalmiete, remove Kaltmiete + Kaufpreis
 add_filter( 'immomakler_search_enabled_ranges', 'woonwoon_search_ranges', 20 );
 
