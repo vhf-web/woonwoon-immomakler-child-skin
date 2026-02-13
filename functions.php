@@ -29,6 +29,7 @@ add_filter( 'immomakler_searchable_postmeta_keys', function ( $keys ) {
 				$keys,
 				[
 					'pauschalmiete',
+					'pauschalmiete_numeric',
 					'warmmiete',
 					'preis',
 					'regionaler_zusatz',
@@ -36,6 +37,82 @@ add_filter( 'immomakler_searchable_postmeta_keys', function ( $keys ) {
 			)
 		)
 	);
+} );
+
+/**
+ * Normalize localized price strings to float.
+ * Examples: "2.390,00 EUR" -> 2390.00, "1190" -> 1190.00
+ */
+function woonwoon_normalize_price_to_float( $raw ): float {
+	$s = trim( (string) $raw );
+	if ( $s === '' ) return 0.0;
+	$s = str_ireplace( [ 'eur', '€' ], '', $s );
+	$s = preg_replace( '/\s+/', '', $s );
+
+	// If there is a comma, treat comma as decimal separator and strip dots (thousands separators).
+	if ( str_contains( $s, ',' ) ) {
+		$s = str_replace( '.', '', $s );
+		$s = str_replace( ',', '.', $s );
+	} else {
+		// Otherwise strip any commas used as thousands separators.
+		$s = str_replace( ',', '', $s );
+	}
+
+	// Keep only digits, dot and minus.
+	$s = preg_replace( '/[^0-9\.\-]/', '', $s );
+	return (float) $s;
+}
+
+/**
+ * Store numeric pauschalmiete into a dedicated meta key for fast/accurate filtering.
+ */
+function woonwoon_update_pauschalmiete_numeric_meta( int $post_id ): void {
+	$raw = get_post_meta( $post_id, 'pauschalmiete', true );
+	$val = woonwoon_normalize_price_to_float( $raw );
+	if ( $val > 0 ) {
+		update_post_meta( $post_id, 'pauschalmiete_numeric', $val );
+	} else {
+		delete_post_meta( $post_id, 'pauschalmiete_numeric' );
+	}
+}
+
+add_action( 'save_post_immomakler_object', function ( $post_id ) {
+	if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) ) return;
+	woonwoon_update_pauschalmiete_numeric_meta( (int) $post_id );
+}, 20 );
+
+// Backfill numeric meta for existing objects in small batches (admin only).
+add_action( 'admin_init', function () {
+	if ( get_option( 'woonwoon_pauschalmiete_numeric_migrated' ) ) return;
+	if ( ! current_user_can( 'manage_options' ) ) return;
+
+	$q = new WP_Query(
+		[
+			'post_type'      => 'immomakler_object',
+			'fields'         => 'ids',
+			'posts_per_page' => 100,
+			'no_found_rows'  => true,
+			'meta_query'     => [
+				[
+					'key'     => 'pauschalmiete',
+					'compare' => 'EXISTS',
+				],
+				[
+					'key'     => 'pauschalmiete_numeric',
+					'compare' => 'NOT EXISTS',
+				],
+			],
+		]
+	);
+
+	if ( empty( $q->posts ) ) {
+		update_option( 'woonwoon_pauschalmiete_numeric_migrated', 1 );
+		return;
+	}
+
+	foreach ( $q->posts as $pid ) {
+		woonwoon_update_pauschalmiete_numeric_meta( (int) $pid );
+	}
 } );
 
 // Search ranges: keep Zimmer + Fläche from plugin, add Pauschalmiete, remove Kaltmiete + Kaufpreis
@@ -51,7 +128,8 @@ function woonwoon_search_ranges( $ranges ) {
 		'slug'        => 'pauschalmiete',
 		'unit'        => $currency,
 		'decimals'    => 0,
-		'meta_key'    => 'pauschalmiete',
+		// Use normalized numeric field for correct comparisons.
+		'meta_key'    => 'pauschalmiete_numeric',
 		'slider_step' => 100,
 	];
 	return $ranges;
@@ -79,16 +157,13 @@ add_filter( 'immomakler_search_max_meta_value', function ( $v, $key ) {
 
 	if ( $key !== 'pauschalmiete' ) return $v;
 
+	// Slider max is computed for slug "pauschalmiete" but must use our numeric meta key.
 	$max = get_transient( 'woonwoon_pauschalmiete_max_numeric' );
 	if ( $max === false ) {
-		$expr = "CASE
-			WHEN pm.meta_value LIKE '%,%' THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(pm.meta_value), 'EUR', ''), '€', ''), ' ', ''), '.', ''), ',', '.')
-			ELSE REPLACE(REPLACE(REPLACE(REPLACE(TRIM(pm.meta_value), 'EUR', ''), '€', ''), ' ', ''), ',', '')
-		END";
 		$max = (float) $wpdb->get_var(
-			"SELECT MAX(CAST({$expr} AS DECIMAL(12,2)))
+			"SELECT MAX(CAST(pm.meta_value AS DECIMAL(12,2)))
 			 FROM {$wpdb->postmeta} pm
-			 WHERE pm.meta_key = 'pauschalmiete'
+			 WHERE pm.meta_key = 'pauschalmiete_numeric'
 			   AND pm.meta_value IS NOT NULL
 			   AND pm.meta_value != ''"
 		);
@@ -176,53 +251,6 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 			'value'   => $regionaler,
 			'compare' => 'LIKE',
 		];
-	}
-
-	// --- Pauschalmiete slider fallback ---
-	// Some imports use different price keys; filter across common rent fields.
-	$von_raw = $query->get( 'von-pauschalmiete' );
-	$bis_raw = $query->get( 'bis-pauschalmiete' );
-	if ( $von_raw === null || $von_raw === '' ) $von_raw = isset( $_GET['von-pauschalmiete'] ) ? trim( wp_unslash( $_GET['von-pauschalmiete'] ) ) : '';
-	if ( $bis_raw === null || $bis_raw === '' ) $bis_raw = isset( $_GET['bis-pauschalmiete'] ) ? trim( wp_unslash( $_GET['bis-pauschalmiete'] ) ) : '';
-	if ( $von_raw === null || $von_raw === '' ) $von_raw = isset( $_POST['von-pauschalmiete'] ) ? trim( wp_unslash( $_POST['von-pauschalmiete'] ) ) : '';
-	if ( $bis_raw === null || $bis_raw === '' ) $bis_raw = isset( $_POST['bis-pauschalmiete'] ) ? trim( wp_unslash( $_POST['bis-pauschalmiete'] ) ) : '';
-
-	$has_price_filter = ( $von_raw !== '' || $bis_raw !== '' );
-	if ( $has_price_filter ) {
-		$von = abs( floatval( str_replace( ',', '.', (string) $von_raw ) ) );
-		$bis = abs( floatval( str_replace( ',', '.', (string) $bis_raw ) ) );
-
-		if ( $bis > 0 && $von <= $bis ) {
-			// Remove plugin's single-key pauschalmiete clause, then add our fallback OR group.
-			foreach ( $meta_query as $key => $clause ) {
-				if ( $key === 'relation' || ! is_array( $clause ) ) continue;
-				if ( isset( $clause['key'] ) && $clause['key'] === 'pauschalmiete' ) {
-					unset( $meta_query[ $key ] );
-				}
-			}
-
-			$meta_query[] = [
-				'relation' => 'OR',
-				[
-					'key'     => 'pauschalmiete',
-					'value'   => [ $von, $bis ],
-					'type'    => 'NUMERIC',
-					'compare' => 'BETWEEN',
-				],
-				[
-					'key'     => 'warmmiete',
-					'value'   => [ $von, $bis ],
-					'type'    => 'NUMERIC',
-					'compare' => 'BETWEEN',
-				],
-				[
-					'key'     => 'preis',
-					'value'   => [ $von, $bis ],
-					'type'    => 'NUMERIC',
-					'compare' => 'BETWEEN',
-				],
-			];
-		}
 	}
 
 	$query->set( 'meta_query', $meta_query );
