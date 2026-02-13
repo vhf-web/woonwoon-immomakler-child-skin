@@ -88,7 +88,7 @@ add_filter( 'query_vars', function ( $vars ) {
 
 // Ortsteil dropdown (populated from all unique regionaler_zusatz meta values)
 add_action( 'immomakler_search_form_after_ranges', function () {
-	$selected = isset( $_GET['regionaler_zusatz'] ) ? sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) ) : '';
+	$selected = isset( $_GET['regionaler_zusatz'] ) ? trim( sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) ) ) : '';
 
 	// Get all unique non-empty regionaler_zusatz values from DB (cached for 12h)
 	$cache_key = 'woonwoon_regionaler_zusatz_options';
@@ -123,7 +123,7 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	<?php
 } );
 
-// Regionaler Zusatz + Pauschalmiete (runs after plugin apply_ranges at 100)
+// Regionaler Zusatz (plugin handles range filters itself)
 add_action( 'pre_get_posts', 'woonwoon_search_pre_get_posts', 101 );
 
 function woonwoon_is_immomakler_query( WP_Query $query ) {
@@ -145,10 +145,11 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	}
 
 	// --- Regionaler Zusatz ---
-	$regionaler = '';
-	if ( isset( $_GET['regionaler_zusatz'] ) ) {
-		$regionaler = sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) );
+	$regionaler = $query->get( 'regionaler_zusatz' );
+	if ( $regionaler === null || $regionaler === '' ) {
+		$regionaler = isset( $_GET['regionaler_zusatz'] ) ? wp_unslash( $_GET['regionaler_zusatz'] ) : '';
 	}
+	$regionaler = trim( sanitize_text_field( (string) $regionaler ) );
 	if ( $regionaler !== '' ) {
 		$meta_query[] = [
 			'key'     => 'regionaler_zusatz',
@@ -157,71 +158,5 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 		];
 	}
 
-	// --- Pauschalmiete: handle entirely ourselves (plugin has type-mismatch bugs) ---
-	$von_raw = $query->get( 'von-pauschalmiete' );
-	$bis_raw = $query->get( 'bis-pauschalmiete' );
-	if ( $von_raw === null || $von_raw === '' ) $von_raw = isset( $_GET['von-pauschalmiete'] ) ? trim( wp_unslash( $_GET['von-pauschalmiete'] ) ) : '';
-	if ( $bis_raw === null || $bis_raw === '' ) $bis_raw = isset( $_GET['bis-pauschalmiete'] ) ? trim( wp_unslash( $_GET['bis-pauschalmiete'] ) ) : '';
-	if ( $von_raw === null || $von_raw === '' ) $von_raw = isset( $_POST['von-pauschalmiete'] ) ? trim( wp_unslash( $_POST['von-pauschalmiete'] ) ) : '';
-	if ( $bis_raw === null || $bis_raw === '' ) $bis_raw = isset( $_POST['bis-pauschalmiete'] ) ? trim( wp_unslash( $_POST['bis-pauschalmiete'] ) ) : '';
-
-	if ( $von_raw === '' && $bis_raw === '' ) {
-		$query->set( 'meta_query', $meta_query );
-		return; // no pauschalmiete params → nothing to do
-	}
-
-	$von = abs( floatval( str_replace( ',', '.', $von_raw ) ) );
-	$bis = abs( floatval( str_replace( ',', '.', $bis_raw ) ) );
-
-	// Remove any existing pauschalmiete clause the plugin may have added
-	foreach ( $meta_query as $key => $clause ) {
-		if ( $key === 'relation' ) continue;
-		if ( isset( $clause['key'] ) && $clause['key'] === 'pauschalmiete' ) {
-			unset( $meta_query[ $key ] );
-		}
-	}
-
-	// Add a custom SQL price filter to support localized meta values like "2.390,00 EUR".
-	if ( $bis > 0 && $von <= $bis ) {
-		$query->set( '_woonwoon_pauschalmiete_min', $von );
-		$query->set( '_woonwoon_pauschalmiete_max', $bis );
-		if ( ! has_filter( 'posts_where', 'woonwoon_posts_where_pauschalmiete' ) ) {
-			add_filter( 'posts_where', 'woonwoon_posts_where_pauschalmiete', 20, 2 );
-		}
-	}
-
 	$query->set( 'meta_query', $meta_query );
-}
-
-function woonwoon_posts_where_pauschalmiete( $where, WP_Query $query ) {
-	global $wpdb;
-
-	$min = $query->get( '_woonwoon_pauschalmiete_min' );
-	$max = $query->get( '_woonwoon_pauschalmiete_max' );
-	if ( ! woonwoon_is_immomakler_query( $query ) || $min === null || $max === null ) return $where;
-
-	$min = (float) $min;
-	$max = (float) $max;
-	if ( $max <= 0 || $min > $max ) return $where;
-
-	$expr = "CASE
-		WHEN pm_ww.meta_value LIKE '%,%' THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(pm_ww.meta_value), 'EUR', ''), '€', ''), ' ', ''), '.', ''), ',', '.')
-		ELSE REPLACE(REPLACE(REPLACE(REPLACE(TRIM(pm_ww.meta_value), 'EUR', ''), '€', ''), ' ', ''), ',', '')
-	END";
-
-	$where .= $wpdb->prepare(
-		" AND EXISTS (
-			SELECT 1
-			FROM {$wpdb->postmeta} pm_ww
-			WHERE pm_ww.post_id = {$wpdb->posts}.ID
-			  AND pm_ww.meta_key = 'pauschalmiete'
-			  AND pm_ww.meta_value IS NOT NULL
-			  AND pm_ww.meta_value != ''
-			  AND CAST({$expr} AS DECIMAL(12,2)) BETWEEN %f AND %f
-		)",
-		$min,
-		$max
-	);
-
-	return $where;
 }

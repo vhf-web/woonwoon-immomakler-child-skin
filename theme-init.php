@@ -15,7 +15,7 @@ License: (c) 2015-2023, 49heroes GmbH & Co. KG. GPLv2
 add_filter( 'immomakler_available_skins', 'immomakler_child_skin_add' );
 function immomakler_child_skin_add( $skins ) {
 	$skins['child_skin'] = array(
-	                            'name'          => 'Custom woonwoon Child Skin 9', // kann z.B. durch den Namen des Maklerbüros ersetzt werden
+	                            'name'          => 'Custom woonwoon Child Skin 10', // kann z.B. durch den Namen des Maklerbüros ersetzt werden
 	                            'parent_id'     => 'bootstrap3',
 	                            'path'          => plugin_dir_path( __FILE__ ),
 	                            'url'           => plugin_dir_url( __FILE__ ),
