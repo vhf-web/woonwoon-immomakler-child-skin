@@ -48,7 +48,6 @@ add_filter( 'immomakler_searchable_postmeta_keys', function ( $keys ) {
 					// other keys you want searchable:
 					'warmmiete',
 					'preis',
-					'regionaler_zusatz',
 				]
 			)
 		)
@@ -73,7 +72,7 @@ function woonwoon_normalize_price_to_float( $raw ): float {
 	$s = preg_replace( '/\s+/', '', $s );
 
 	// If there is a comma, treat comma as decimal separator and strip dots (thousands separators).
-	if ( function_exists( 'str_contains' ) && str_contains( $s, ',' ) ) {
+	if ( strpos( $s, ',' ) !== false ) {
 		$s = str_replace( '.', '', $s );
 		$s = str_replace( ',', '.', $s );
 	} else {
@@ -304,57 +303,6 @@ add_filter( 'immomakler_search_max_meta_value', function ( $v, $key ) {
 }, 10, 2 );
 
 /* ------------------------------------------------------------
- * Regionaler Zusatz dropdown (Ortsteil / Bezirk)
- * ------------------------------------------------------------ */
-
-// Register as query var
-add_filter( 'query_vars', function ( $vars ) {
-	$vars[] = 'regionaler_zusatz';
-	return $vars;
-} );
-
-// Ortsteil dropdown (populated from all unique regionaler_zusatz meta values)
-add_action( 'immomakler_search_form_after_ranges', function () {
-	$selected = isset( $_GET['regionaler_zusatz'] )
-		? trim( sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) ) )
-		: '';
-
-	// Get all unique non-empty regionaler_zusatz values from DB (cached for 12h)
-	$cache_key = 'woonwoon_regionaler_zusatz_options';
-	$options   = get_transient( $cache_key );
-	if ( false === $options ) {
-		global $wpdb;
-		$options = $wpdb->get_col(
-			"SELECT DISTINCT meta_value FROM {$wpdb->postmeta}
-			 WHERE meta_key = 'regionaler_zusatz'
-			   AND meta_value != ''
-			   AND meta_value IS NOT NULL
-			 ORDER BY meta_value ASC"
-		);
-
-		// Filter out numeric-only codes (plugin sometimes stores region codes)
-		$options = array_filter( $options, function ( $v ) {
-			return (bool) preg_match( '/[a-zA-ZäöüÄÖÜß]/', (string) $v );
-		} );
-
-		set_transient( $cache_key, $options, 12 * HOUR_IN_SECONDS );
-	}
-	?>
-	<div class="immomakler-search-regionaler-zusatz col-xs-12 col-sm-3">
-		<label for="immomakler-search-regionaler-zusatz" class="range-label"><?php esc_html_e( 'Ortsteil / Bezirk', 'immomakler' ); ?></label>
-		<select name="regionaler_zusatz" id="immomakler-search-regionaler-zusatz" class="form-control" aria-label="<?php esc_attr_e( 'Ortsteil / Bezirk', 'immomakler' ); ?>">
-			<option value=""><?php esc_html_e( 'Alle Ortsteile', 'immomakler' ); ?></option>
-			<?php foreach ( $options as $ortsteil ) : ?>
-				<option value="<?php echo esc_attr( $ortsteil ); ?>" <?php selected( $selected, $ortsteil ); ?>>
-					<?php echo esc_html( $ortsteil ); ?>
-				</option>
-			<?php endforeach; ?>
-		</select>
-	</div>
-	<?php
-} );
-
-/* ------------------------------------------------------------
  * Apply custom filters to frontend queries
  * ------------------------------------------------------------ */
 
@@ -386,20 +334,6 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	$meta_query = $query->get( 'meta_query' );
 	if ( ! is_array( $meta_query ) ) {
 		$meta_query = [];
-	}
-
-	// --- Regionaler Zusatz ---
-	$regionaler = $query->get( 'regionaler_zusatz' );
-	if ( $regionaler === null || $regionaler === '' ) {
-		$regionaler = isset( $_GET['regionaler_zusatz'] ) ? wp_unslash( $_GET['regionaler_zusatz'] ) : '';
-	}
-	$regionaler = trim( sanitize_text_field( (string) $regionaler ) );
-	if ( $regionaler !== '' ) {
-		$meta_query[] = [
-			'key'     => 'regionaler_zusatz',
-			'value'   => $regionaler,
-			'compare' => 'LIKE',
-		];
 	}
 
 	/**
