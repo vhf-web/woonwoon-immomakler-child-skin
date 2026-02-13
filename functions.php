@@ -105,7 +105,14 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 add_action( 'pre_get_posts', 'woonwoon_search_pre_get_posts', 101 );
 
 function woonwoon_search_pre_get_posts( WP_Query $query ) {
+	// Only touch frontend property queries.
+	if ( is_admin() ) return;
 	if ( $query->get( 'post_type' ) !== 'immomakler_object' ) return;
+
+	$meta_query = $query->get( 'meta_query' );
+	if ( ! is_array( $meta_query ) ) {
+		$meta_query = [];
+	}
 
 	// --- Regionaler Zusatz ---
 	$regionaler = '';
@@ -113,8 +120,11 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 		$regionaler = sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) );
 	}
 	if ( $regionaler !== '' ) {
-		$GLOBALS['woonwoon_regionaler'] = $regionaler;
-		add_filter( 'posts_where', 'woonwoon_posts_where_regionaler', 10, 2 );
+		$meta_query[] = [
+			'key'     => 'regionaler_zusatz',
+			'value'   => $regionaler,
+			'compare' => 'LIKE',
+		];
 	}
 
 	// --- Pauschalmiete: handle entirely ourselves (plugin has type-mismatch bugs) ---
@@ -122,16 +132,12 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	$bis_raw = isset( $_GET['bis-pauschalmiete'] ) ? trim( $_GET['bis-pauschalmiete'] ) : '';
 
 	if ( $von_raw === '' && $bis_raw === '' ) {
+		$query->set( 'meta_query', $meta_query );
 		return; // no pauschalmiete params → nothing to do
 	}
 
 	$von = abs( floatval( str_replace( ',', '.', $von_raw ) ) );
 	$bis = abs( floatval( str_replace( ',', '.', $bis_raw ) ) );
-
-	$meta_query = $query->get( 'meta_query' );
-	if ( ! is_array( $meta_query ) ) {
-		$meta_query = [];
-	}
 
 	// Remove any existing pauschalmiete clause the plugin may have added
 	foreach ( $meta_query as $key => $clause ) {
@@ -141,49 +147,15 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 		}
 	}
 
-	// Add our own clause: BETWEEN + NOT EXISTS (so posts without pauschalmiete still show)
+	// Add our own strict price clause.
 	if ( $bis > 0 && $von <= $bis ) {
 		$meta_query[] = [
-			'relation' => 'OR',
-			[
-				'key'     => 'pauschalmiete',
-				'value'   => [ $von, $bis ],
-				'type'    => 'NUMERIC',
-				'compare' => 'BETWEEN',
-			],
-			[
-				'key'     => 'pauschalmiete',
-				'compare' => 'NOT EXISTS',
-			],
+			'key'     => 'pauschalmiete',
+			'value'   => [ $von, $bis ],
+			'type'    => 'NUMERIC',
+			'compare' => 'BETWEEN',
 		];
 	}
 
 	$query->set( 'meta_query', $meta_query );
-}
-
-function woonwoon_posts_where_regionaler( $where, WP_Query $query ) {
-	$r = $GLOBALS['woonwoon_regionaler'] ?? '';
-	if ( $r === '' || $query->get( 'post_type' ) !== 'immomakler_object' ) {
-		remove_filter( 'posts_where', 'woonwoon_posts_where_regionaler', 10 );
-		return $where;
-	}
-	global $wpdb;
-	$like = '%' . $wpdb->esc_like( $r ) . '%';
-	$tax = apply_filters( 'immomakler_location_taxonomy', 'immomakler_object_location' );
-	$meta_sql = $wpdb->prepare(
-		"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key='regionaler_zusatz' AND meta_value LIKE %s",
-		$like
-	);
-	$term_sql = $wpdb->prepare(
-		"SELECT tr.object_id FROM {$wpdb->term_relationships} tr
-		INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id=tt.term_taxonomy_id
-		INNER JOIN {$wpdb->terms} t ON tt.term_id=t.term_id
-		WHERE tt.taxonomy=%s AND t.name LIKE %s",
-		$tax,
-		$like
-	);
-	$where .= " AND ( {$wpdb->posts}.ID IN ({$meta_sql}) OR {$wpdb->posts}.ID IN ({$term_sql}) )";
-	unset( $GLOBALS['woonwoon_regionaler'] );
-	remove_filter( 'posts_where', 'woonwoon_posts_where_regionaler', 10 );
-	return $where;
 }
