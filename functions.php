@@ -64,69 +64,101 @@ add_filter( 'query_vars', function ( $vars ) {
 	return $vars;
 } );
 
-// Ortsteil field
+// Ortsteil dropdown (populated from all unique regionaler_zusatz meta values)
 add_action( 'immomakler_search_form_after_ranges', function () {
-	$val = isset( $_GET['regionaler_zusatz'] ) ? sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) )
-		: ( isset( $_POST['regionaler_zusatz'] ) ? sanitize_text_field( wp_unslash( $_POST['regionaler_zusatz'] ) ) : '' );
+	$selected = isset( $_GET['regionaler_zusatz'] ) ? sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) ) : '';
+
+	// Get all unique non-empty regionaler_zusatz values from DB (cached for 12h)
+	$cache_key = 'woonwoon_regionaler_zusatz_options';
+	$options   = get_transient( $cache_key );
+	if ( false === $options ) {
+		global $wpdb;
+		$options = $wpdb->get_col(
+			"SELECT DISTINCT meta_value FROM {$wpdb->postmeta}
+			 WHERE meta_key = 'regionaler_zusatz'
+			   AND meta_value != ''
+			   AND meta_value IS NOT NULL
+			 ORDER BY meta_value ASC"
+		);
+		// Filter out numeric-only codes (plugin sometimes stores region codes)
+		$options = array_filter( $options, function ( $v ) {
+			return preg_match( '/[a-zA-ZäöüÄÖÜß]/', $v );
+		} );
+		set_transient( $cache_key, $options, 12 * HOUR_IN_SECONDS );
+	}
 	?>
 	<div class="immomakler-search-regionaler-zusatz col-xs-12 col-sm-3">
 		<label for="immomakler-search-regionaler-zusatz" class="range-label"><?php esc_html_e( 'Ortsteil / Bezirk', 'immomakler' ); ?></label>
-		<input type="text" name="regionaler_zusatz" id="immomakler-search-regionaler-zusatz" class="form-control" value="<?php echo esc_attr( $val ); ?>" placeholder="<?php esc_attr_e( 'z.B. Kreuzberg, Mitte', 'immomakler' ); ?>">
+		<select name="regionaler_zusatz" id="immomakler-search-regionaler-zusatz" class="form-control" aria-label="<?php esc_attr_e( 'Ortsteil / Bezirk', 'immomakler' ); ?>">
+			<option value=""><?php esc_html_e( 'Alle Ortsteile', 'immomakler' ); ?></option>
+			<?php foreach ( $options as $ortsteil ) : ?>
+				<option value="<?php echo esc_attr( $ortsteil ); ?>" <?php selected( $selected, $ortsteil ); ?>>
+					<?php echo esc_html( $ortsteil ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
 	</div>
 	<?php
 } );
 
-// Regionaler Zusatz + Pauschalmiete fixes (runs after plugin apply_ranges at 100)
+// Regionaler Zusatz + Pauschalmiete (runs after plugin apply_ranges at 100)
 add_action( 'pre_get_posts', 'woonwoon_search_pre_get_posts', 101 );
 
 function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	if ( $query->get( 'post_type' ) !== 'immomakler_object' ) return;
 
-	$get_param = function ( $key ) use ( $query ) {
-		$v = $query->get( $key );
-		if ( $v !== '' && $v !== null ) return $v;
-		if ( isset( $_GET[ $key ] ) ) return sanitize_text_field( wp_unslash( $_GET[ $key ] ) );
-		if ( isset( $_POST[ $key ] ) ) return sanitize_text_field( wp_unslash( $_POST[ $key ] ) );
-		return '';
-	};
-
-	// Regionaler Zusatz: meta LIKE OR location taxonomy
-	$regionaler = $get_param( 'regionaler_zusatz' );
+	// --- Regionaler Zusatz ---
+	$regionaler = '';
+	if ( isset( $_GET['regionaler_zusatz'] ) ) {
+		$regionaler = sanitize_text_field( wp_unslash( $_GET['regionaler_zusatz'] ) );
+	}
 	if ( $regionaler !== '' ) {
 		$GLOBALS['woonwoon_regionaler'] = $regionaler;
 		add_filter( 'posts_where', 'woonwoon_posts_where_regionaler', 10, 2 );
 	}
 
-	// Pauschalmiete: plugin creates meta_query even at default range (type mismatch in === check).
-	// Posts WITHOUT pauschalmiete meta (e.g. Bauprojekte) get excluded. Fix: add NOT EXISTS + =0 OR clause.
+	// --- Pauschalmiete: handle entirely ourselves (plugin has type-mismatch bugs) ---
+	$von_raw = isset( $_GET['von-pauschalmiete'] ) ? trim( $_GET['von-pauschalmiete'] ) : '';
+	$bis_raw = isset( $_GET['bis-pauschalmiete'] ) ? trim( $_GET['bis-pauschalmiete'] ) : '';
+
+	if ( $von_raw === '' && $bis_raw === '' ) {
+		return; // no pauschalmiete params → nothing to do
+	}
+
+	$von = abs( floatval( str_replace( ',', '.', $von_raw ) ) );
+	$bis = abs( floatval( str_replace( ',', '.', $bis_raw ) ) );
+
 	$meta_query = $query->get( 'meta_query' );
-	if ( is_array( $meta_query ) ) {
-		foreach ( $meta_query as $i => $clause ) {
-			if ( isset( $clause['key'] ) && $clause['key'] === 'pauschalmiete' && ! isset( $clause['relation'] ) ) {
-				$meta_query[ $i ] = [
-					'relation' => 'OR',
-					$clause,
-					[
-						'key'     => 'pauschalmiete',
-						'compare' => 'NOT EXISTS',
-					],
-					[
-						'key'     => 'pauschalmiete',
-						'value'   => '',
-						'compare' => '=',
-					],
-					[
-						'key'     => 'pauschalmiete',
-						'value'   => 0,
-						'type'    => 'numeric',
-						'compare' => '=',
-					],
-				];
-				$query->set( 'meta_query', $meta_query );
-				break;
-			}
+	if ( ! is_array( $meta_query ) ) {
+		$meta_query = [];
+	}
+
+	// Remove any existing pauschalmiete clause the plugin may have added
+	foreach ( $meta_query as $key => $clause ) {
+		if ( $key === 'relation' ) continue;
+		if ( isset( $clause['key'] ) && $clause['key'] === 'pauschalmiete' ) {
+			unset( $meta_query[ $key ] );
 		}
 	}
+
+	// Add our own clause: BETWEEN + NOT EXISTS (so posts without pauschalmiete still show)
+	if ( $bis > 0 && $von <= $bis ) {
+		$meta_query[] = [
+			'relation' => 'OR',
+			[
+				'key'     => 'pauschalmiete',
+				'value'   => [ $von, $bis ],
+				'type'    => 'NUMERIC',
+				'compare' => 'BETWEEN',
+			],
+			[
+				'key'     => 'pauschalmiete',
+				'compare' => 'NOT EXISTS',
+			],
+		];
+	}
+
+	$query->set( 'meta_query', $meta_query );
 }
 
 function woonwoon_posts_where_regionaler( $where, WP_Query $query ) {
