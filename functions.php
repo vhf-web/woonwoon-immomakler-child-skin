@@ -4,7 +4,7 @@
  * Child skin functions for WOONWOON – Search filters.
  *
  * Zimmer + Fläche: plugin default (no custom code).
- * Pauschalmiete: add filter "bis X €". Kaltmiete + Kaufpreis removed.
+ * Pauschalmiete: add filter "bis X €". Kaltmiete + Kaufpreis removed. 
  */
 
 // Archive subtitle
