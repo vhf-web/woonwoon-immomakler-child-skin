@@ -29,6 +29,18 @@ add_filter( 'immomakler_search_enabled_taxonomies', function ( $taxonomies ) {
 add_action( 'immomakler_search_taxonomies_row', function () {}, 5 );
 
 /* ------------------------------------------------------------
+ * Single page: hide some data rows
+ * ------------------------------------------------------------ */
+
+// Remove Energieträger + Mindest-/Maximale Mietdauer from property detail panel.
+add_filter( 'immomakler_property_data_single_keys', function ( $keys, $post_id ) {
+	if ( ! is_array( $keys ) ) {
+		return $keys;
+	}
+	return array_values( array_diff( $keys, [ 'energietraeger', 'min_mietdauer', 'max_mietdauer' ] ) );
+}, 20, 2 );
+
+/* ------------------------------------------------------------
  * Searchable keys (plugin side indexing / allowed meta keys)
  * ------------------------------------------------------------ */
 add_filter( 'immomakler_searchable_postmeta_keys', function ( $keys ) {
