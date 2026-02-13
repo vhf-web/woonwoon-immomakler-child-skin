@@ -41,6 +41,94 @@ add_filter( 'immomakler_property_data_single_keys', function ( $keys, $post_id )
 }, 20, 2 );
 
 /* ------------------------------------------------------------
+ * Archive: add Pauschalmiete sorting
+ * ------------------------------------------------------------ */
+
+// Allow new order keys.
+add_filter( 'immomakler_allowed_orderby', function ( $allowed ) {
+	if ( ! is_array( $allowed ) ) {
+		$allowed = [];
+	}
+	$allowed[] = 'pauschasc';
+	$allowed[] = 'pauschdesc';
+	return array_values( array_unique( $allowed ) );
+}, 20 );
+
+// Add dropdown options.
+add_filter( 'immomakler_orderby_options', function ( array $options, string $active_order ) : array {
+	$pausch_options = [
+		'pauschdesc' => [
+			'label'  => __( 'Pauschalmiete absteigend', 'immomakler' ),
+			'href'   => add_query_arg( 'im_order', 'pauschdesc' ),
+			'active' => ( $active_order === 'pauschdesc' ),
+		],
+		'pauschasc'  => [
+			'label'  => __( 'Pauschalmiete aufsteigend', 'immomakler' ),
+			'href'   => add_query_arg( 'im_order', 'pauschasc' ),
+			'active' => ( $active_order === 'pauschasc' ),
+		],
+	];
+
+	// Insert right after the normal price options if present.
+	$merged = [];
+	foreach ( $options as $k => $v ) {
+		$merged[ $k ] = $v;
+		if ( $k === 'priceasc' ) {
+			foreach ( $pausch_options as $pk => $pv ) {
+				$merged[ $pk ] = $pv;
+			}
+		}
+	}
+	// If 'priceasc' wasn't present, append at end.
+	foreach ( $pausch_options as $pk => $pv ) {
+		if ( ! isset( $merged[ $pk ] ) ) {
+			$merged[ $pk ] = $pv;
+		}
+	}
+	return $merged;
+}, 20, 2 );
+
+// Make the query sort by `pauschalmiete_numeric`.
+add_filter( 'immomakler_orderby_query_params', function ( array $query_params, string $order_key ) : array {
+	if ( $order_key !== 'pauschasc' && $order_key !== 'pauschdesc' ) {
+		return $query_params;
+	}
+
+	$direction = ( $order_key === 'pauschasc' ) ? 'ASC' : 'DESC';
+
+	$meta_query = $query_params['meta_query'] ?? [];
+	if ( ! is_array( $meta_query ) ) {
+		$meta_query = [];
+	}
+
+	$meta_query['orderby_clause'] = [
+		'key'     => 'pauschalmiete_numeric',
+		'compare' => 'EXISTS',
+		'type'    => 'NUMERIC',
+	];
+
+	$orderby = [
+		'orderby_clause' => $direction,
+	];
+
+	// Keep plugin's "status first" sorting if enabled.
+	if ( class_exists( 'ImmoMakler_Options' ) && ImmoMakler_Options::get( 'orderby_status' ) ) {
+		$meta_query['orderby_status_clause'] = [
+			'key'     => 'status_order',
+			'compare' => 'EXISTS',
+			'type'    => 'NUMERIC',
+		];
+		$orderby = array_merge( [ 'orderby_status_clause' => 'ASC' ], $orderby );
+	}
+
+	$query_params['meta_query']         = $meta_query; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+	$query_params['orderby']            = $orderby;
+	$query_params['ignore_custom_sort'] = true;
+
+	return $query_params;
+}, 20, 2 );
+
+/* ------------------------------------------------------------
  * Searchable keys (plugin side indexing / allowed meta keys)
  * ------------------------------------------------------------ */
 add_filter( 'immomakler_searchable_postmeta_keys', function ( $keys ) {

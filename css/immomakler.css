@@ -50,13 +50,9 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 .post-type-archive-immomakler_object .archive-title { margin: 0 0 10px; }
 .post-type-archive-immomakler_object .archive-subtitle { margin: 0 0 20px; }
 
-/* Archive search: hide Suchagenten panel and paginator row */
+/* Archive search: hide Suchagenten panel */
 #immomakler-search-agents-panel,
 .immomakler [id$="immomakler-search-agents-panel"] {
-	display: none !important;
-}
-.immomakler-archive .paginator.row,
-.immomakler .paginator.row {
 	display: none !important;
 }
 
