@@ -58,36 +58,11 @@ add_filter( 'immomakler_search_max_meta_value', function ( $v, $key ) {
 	return $v;
 }, 10, 2 );
 
-// Register query vars (plugin only registers objekt-id, collapse, loadall – we need these for filters)
+// Register regionaler_zusatz as query var (plugin reads von-/bis- params from $_GET directly)
 add_filter( 'query_vars', function ( $vars ) {
-	return array_merge( $vars, [
-		'regionaler_zusatz',
-		'von-pauschalmiete',
-		'bis-pauschalmiete',
-		'von-qm', 'bis-qm',
-		'von-zimmer', 'bis-zimmer',
-	] );
+	$vars[] = 'regionaler_zusatz';
+	return $vars;
 } );
-
-// Ensure search params are passed to property queries (archive can be a PAGE, so main query has post_type=page)
-add_action( 'pre_get_posts', 'woonwoon_search_inject_params', 99 );
-
-function woonwoon_search_inject_params( WP_Query $query ) {
-	if ( $query->get( 'post_type' ) !== 'immomakler_object' ) {
-		return;
-	}
-	$params = [ 'von-pauschalmiete', 'bis-pauschalmiete', 'regionaler_zusatz' ];
-	foreach ( $params as $key ) {
-		if ( $query->get( $key ) !== '' && $query->get( $key ) !== null ) {
-			continue;
-		}
-		if ( isset( $_GET[ $key ] ) ) {
-			$query->set( $key, sanitize_text_field( wp_unslash( $_GET[ $key ] ) ) );
-		} elseif ( isset( $_POST[ $key ] ) ) {
-			$query->set( $key, sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) );
-		}
-	}
-}
 
 // Ortsteil field
 add_action( 'immomakler_search_form_after_ranges', function () {
@@ -122,7 +97,8 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 		add_filter( 'posts_where', 'woonwoon_posts_where_regionaler', 10, 2 );
 	}
 
-	// Pauschalmiete: add OR clause for pauschalmiete=0 (like kaufpreis) so "auf Anfrage" / empty shows
+	// Pauschalmiete: plugin creates meta_query even at default range (type mismatch in === check).
+	// Posts WITHOUT pauschalmiete meta (e.g. Bauprojekte) get excluded. Fix: add NOT EXISTS + =0 OR clause.
 	$meta_query = $query->get( 'meta_query' );
 	if ( is_array( $meta_query ) ) {
 		foreach ( $meta_query as $i => $clause ) {
@@ -130,6 +106,15 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 				$meta_query[ $i ] = [
 					'relation' => 'OR',
 					$clause,
+					[
+						'key'     => 'pauschalmiete',
+						'compare' => 'NOT EXISTS',
+					],
+					[
+						'key'     => 'pauschalmiete',
+						'value'   => '',
+						'compare' => '=',
+					],
 					[
 						'key'     => 'pauschalmiete',
 						'value'   => 0,
