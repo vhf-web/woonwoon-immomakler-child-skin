@@ -31,7 +31,6 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 
 /* Abstand oben/unten für die gesamte Archivansicht */
 .post-type-archive-immomakler_object .immomakler {
-	padding-top: 40px;
 	padding-bottom: 40px;
 }
 
