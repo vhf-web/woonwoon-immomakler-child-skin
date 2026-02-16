@@ -41,6 +41,50 @@ add_filter( 'immomakler_property_data_single_keys', function ( $keys, $post_id )
 }, 20, 2 );
 
 /* ------------------------------------------------------------
+ * Single page: Adresse cleanup (regionaler_zusatz)
+ * ------------------------------------------------------------ */
+
+function woonwoon_clean_regionaler_zusatz_for_address( string $regionaler_zusatz ): string {
+	$r = trim( $regionaler_zusatz );
+	if ( $r === '' ) return '';
+
+	// If stored like "(Charlottenburg)" -> "Charlottenburg"
+	if ( preg_match( '/^\((.+)\)$/u', $r, $m ) ) {
+		$r = trim( $m[1] );
+	}
+
+	// If stored like "Charlottenburg (Charlottenburg)" -> "Charlottenburg"
+	if ( preg_match( '/^(.+?)\s*\(\s*(.+?)\s*\)\s*$/u', $r, $m ) ) {
+		$a = trim( $m[1] );
+		$b = trim( $m[2] );
+		if ( $a !== '' && $a === $b ) {
+			$r = $b;
+		}
+	}
+
+	return trim( $r );
+}
+
+add_filter( 'immomakler_property_data', function ( $property_data, $post_id ) {
+	if ( ! is_array( $property_data ) ) return $property_data;
+	if ( empty( $property_data['adresse']['value'] ) || ! is_string( $property_data['adresse']['value'] ) ) return $property_data;
+
+	$orig = trim( (string) get_post_meta( (int) $post_id, 'regionaler_zusatz', true ) );
+	if ( $orig === '' ) return $property_data;
+
+	$clean = woonwoon_clean_regionaler_zusatz_for_address( $orig );
+	if ( $clean === '' || $clean === $orig ) return $property_data;
+
+	$property_data['adresse']['value'] = str_replace(
+		'<br>(' . $orig . ')',
+		'<br>(' . esc_html( $clean ) . ')',
+		$property_data['adresse']['value']
+	);
+
+	return $property_data;
+}, 30, 2 );
+
+/* ------------------------------------------------------------
  * Archive: add Pauschalmiete sorting
  * ------------------------------------------------------------ */
 

@@ -47,7 +47,9 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 
 /* Titel-Abstände */
 .post-type-archive-immomakler_object .archive-title { margin: 0 0 10px; }
-.post-type-archive-immomakler_object .archive-subtitle { margin: 0 0 20px; }
+.post-type-archive-immomakler_object .archive-subtitle{
+	display:none;
+   }
 
 /* Archive search: hide Suchagenten panel */
 #immomakler-search-agents-panel,
@@ -135,6 +137,10 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	font-weight: 400;
 	
 }
+.single-immomakler_object .property-gallery-static-with-thumbs{
+	margin-top: 4em;
+}
+	
 
 
 /* ======================================================================
@@ -148,6 +154,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
    .immomakler-single h2.property-subtitle{
 	margin-bottom: 2em;
    }
+ 
 
 .single-immomakler_object .property-actions.btn-group .btn {
 	background-color: rgba(255, 255, 255, 0);

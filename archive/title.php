@@ -10,5 +10,5 @@
 
 ?>
 <h1 class="archive-title">Apartments</h1>
-<h2 class="archive-subtitle"><?php echo esc_html( immomakler_archive_subheadline() ); ?></h2>
+<h2 class="archive-subtitle"><?php /*echo esc_html( immomakler_archive_subheadline() );*/ ?></h2>
 
