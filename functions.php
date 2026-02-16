@@ -44,6 +44,12 @@ add_filter( 'immomakler_property_data_single_keys', function ( $keys, $post_id )
  * Archive: add Pauschalmiete sorting
  * ------------------------------------------------------------ */
 
+// Remove default "Preis" sorting (keep Pauschalmiete sorting).
+add_filter( 'immomakler_orderby_options', function ( array $options, string $active_order ) : array {
+	unset( $options['pricedesc'], $options['priceasc'] );
+	return $options;
+}, 15, 2 );
+
 // Allow new order keys.
 add_filter( 'immomakler_allowed_orderby', function ( $allowed ) {
 	if ( ! is_array( $allowed ) ) {
@@ -127,6 +133,19 @@ add_filter( 'immomakler_orderby_query_params', function ( array $query_params, s
 
 	return $query_params;
 }, 20, 2 );
+
+/* ------------------------------------------------------------
+ * Archive: fix "n{Gesamt}" results label
+ * ------------------------------------------------------------ */
+
+// Ensure the infinite scroll label uses correct placeholders.
+add_filter( 'immomakler_search_infinitescroll_amount_label', function ( $label ) {
+	// Keep placeholders {shown}/{total} for the JS replacer.
+	if ( strpos( (string) $label, '{shown}' ) !== false ) {
+		return 'Ergebnisse {shown} von {total}';
+	}
+	return '{total} Ergebnisse';
+} );
 
 /* ------------------------------------------------------------
  * Searchable keys (plugin side indexing / allowed meta keys)
