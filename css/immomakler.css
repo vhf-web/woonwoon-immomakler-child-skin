@@ -136,14 +136,22 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	
 }
 
+
 /* ======================================================================
    Single: property-actions buttons
    ====================================================================== */
 
+   .single-immomakler_object .immomakler-single.immomakler{
+	margin-top:6em
+   }
+
+   .immomakler-single h2.property-subtitle{
+	margin-bottom: 2em;
+   }
+
 .single-immomakler_object .property-actions.btn-group .btn {
 	background-color: rgba(255, 255, 255, 0);
 	border-color: #000;
-	border-width: 2px;
 	border-style: solid;
 	border-radius: 0;
 	box-shadow: none;
@@ -153,10 +161,6 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	cursor: pointer;
 	display: inline-block;
 	font-family: "Montserrat", sans-serif;
-	font-size: 19.2px;
-	font-weight: 500;
-	line-height: 19.2px;
-	padding: 12px 24px;
 	height: auto;
 	text-align: center;
 	margin-right: 11px;
@@ -174,7 +178,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	background-color:#EEE7D2;
 }
 
-.post-type-archive-immomakler_object .immomakler-archive, .post-type-archive-immomakler_object .immomakler, .immomakler-single.immomakler{
+.post-type-archive-immomakler_object .immomakler-archive,  .immomakler-single.immomakler{
 
 	    margin-top: 0px;
 		padding-bottom:0px;
@@ -202,6 +206,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 .immomakler label{
 	font-weight:400;
 }
+
 /* ======================================================================
    Icons (Glyphicons): use Unicode so they work without Bootstrap 3 icon font
    ====================================================================== */
@@ -209,22 +214,23 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 .immomakler .glyphicon-list:before {
 	content: "\2630";
 }
-.immomakler .glyphicon-unchecked:before {
-	content: "\2610";
-}
+
 .immomakler .glyphicon-menu-left:before {
 	content: "\2039";
 }
 .immomakler .glyphicon-menu-right:before {
 	content: "\203A";
 }
+.immomakler .glyphicon-unchecked:before {
+	content: "\2661"; /* ♡ */
+}
 .immomakler .glyphicon-check:before {
-	content: "\2713"; /* ✓ */
-  }
+	content: "\2665"; /* ♥ */
+}
   
   /* map marker */
   .immomakler .glyphicon-map-marker:before {
-	content: "\1F4CD"; /* 📍 */
+	content: none; /* 📍 */
   }
   
   /* lock */
