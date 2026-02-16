@@ -77,7 +77,7 @@ add_filter( 'immomakler_property_data', function ( $property_data, $post_id ) {
 
 	$property_data['adresse']['value'] = str_replace(
 		'<br>(' . $orig . ')',
-		'<br>(' . esc_html( $clean ) . ')',
+		' (' . esc_html( $clean ) . ')',
 		$property_data['adresse']['value']
 	);
 

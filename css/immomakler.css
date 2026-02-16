@@ -41,6 +41,29 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
   margin-top: 2em;
 }
 
+/* Single: map should start at top without spacing */
+.single-immomakler_object .immomakler-single.immomakler{
+	margin-top: 0;
+}
+.single-immomakler_object .woonwoon-single-map-top{
+	margin-left: -15px;
+	margin-right: -15px;
+}
+.single-immomakler_object .woonwoon-single-map-top > [class*="col-"]{
+	padding-left: 0;
+	padding-right: 0;
+}
+.single-immomakler_object .woonwoon-single-map-top .property-map{
+	margin: 0 0 24px 0;
+	border: none;
+}
+.single-immomakler_object .woonwoon-single-map-top .property-map .panel-heading{
+	display: none;
+}
+.single-immomakler_object .woonwoon-single-map-top .property-map .panel-body{
+	padding: 0;
+}
+
 .post-type-archive-immomakler_object .immomakler .archive-title{
 	text-transform: uppercase;
 }
