@@ -44,18 +44,52 @@ add_filter( 'immomakler_property_data_single_keys', function ( $keys, $post_id )
  * Single page: subtitle + "merken" label
  * ------------------------------------------------------------ */
 
-// Replace "... zur Miete" with "Wohnen auf Zeit" on single pages.
+// Subtitle formatting:
+// - Single: "... zur Miete" -> "Wohnen auf Zeit"
+// - Archive cards: "PLZ Ort, Wohnung" -> "PLZ Ort, Kreuzberg" (regionaler_zusatz)
 add_filter( 'immomakler_property_subtitle', function ( $subtitle ) {
-	if ( function_exists( 'is_immomakler_single' ) && is_immomakler_single() ) {
-		$subtitle = (string) $subtitle;
+	$subtitle = (string) $subtitle;
 
+	$is_single = function_exists( 'is_immomakler_single' ) && is_immomakler_single();
+	if ( $is_single ) {
 		// Typical format: "PLZ Ort, Objektart zur Miete" -> "PLZ Ort, Wohnen auf Zeit"
 		$subtitle = preg_replace( '/,\s*[^,]+?\s+zur\s+Miete\s*$/u', ', Wohnen auf Zeit', $subtitle );
-
 		// Fallback if format differs: just replace the suffix.
 		$subtitle = preg_replace( '/\s+zur\s+Miete\s*$/u', ' Wohnen auf Zeit', $subtitle );
+		return $subtitle;
 	}
-	return (string) $subtitle;
+
+	// Archive/listing: prefer regionaler_zusatz (district) instead of object type.
+	$post_id = function_exists( 'get_the_ID' ) ? (int) get_the_ID() : 0;
+	if ( $post_id <= 0 ) {
+		return $subtitle;
+	}
+
+	$plz  = trim( (string) get_post_meta( $post_id, 'plz', true ) );
+	$ort  = trim( (string) get_post_meta( $post_id, 'ort', true ) );
+	$base = trim( trim( $plz . ' ' . $ort ) );
+	if ( $base === '' ) {
+		return $subtitle;
+	}
+
+	$regionaler_zusatz = trim( (string) get_post_meta( $post_id, 'regionaler_zusatz', true ) );
+	$district          = function_exists( 'woonwoon_clean_regionaler_zusatz_for_address' )
+		? woonwoon_clean_regionaler_zusatz_for_address( $regionaler_zusatz )
+		: $regionaler_zusatz;
+
+	// Fallback: use sublocality if no regionaler_zusatz is present.
+	if ( $district === '' ) {
+		$sublocality = trim( (string) get_post_meta( $post_id, 'sublocality', true ) );
+		if ( $sublocality !== '' && strpos( $ort, $sublocality ) === false ) {
+			$district = $sublocality;
+		}
+	}
+
+	if ( $district === '' || $district === $ort ) {
+		return $base;
+	}
+
+	return $base . ', ' . $district;
 }, 20 );
 
 // Capitalize the favorites button label.
