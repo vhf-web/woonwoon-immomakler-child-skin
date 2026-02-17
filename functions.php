@@ -411,6 +411,21 @@ add_action( 'save_post_immomakler_object', function ( $post_id ) {
 }, 20 );
 
 /**
+ * After importer publishes/updates a property, mirror again.
+ * This covers cases where the plugin flattens/deletes `immomakler_metadata`.
+ */
+add_action( 'immomakler_after_publish_post', function ( $post_id ) {
+	$post_id = (int) $post_id;
+	if ( $post_id <= 0 ) {
+		return;
+	}
+	if ( get_post_type( $post_id ) !== 'immomakler_object' ) {
+		return;
+	}
+	woonwoon_mirror_from_immomakler_metadata( $post_id );
+}, 20 );
+
+/**
  * Backfill mirrors for existing objects in small batches (admin only).
  * This runs until finished and then sets an option flag.
  */
