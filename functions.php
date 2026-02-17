@@ -295,9 +295,19 @@ function woonwoon_mirror_from_immomakler_metadata( int $post_id, $meta_value = n
 	}
 
 	if ( ! is_array( $data ) ) {
-		// No valid container -> clean mirrors
-		delete_post_meta( $post_id, 'pauschalmiete' );
-		delete_post_meta( $post_id, 'pauschalmiete_numeric' );
+		// If the container is missing (e.g. because the plugin flattens/deletes it),
+		// never delete the real meta keys. Instead, try to compute numeric from existing `pauschalmiete`.
+		$raw_existing = trim( (string) get_post_meta( $post_id, 'pauschalmiete', true ) );
+		if ( $raw_existing !== '' ) {
+			$val_existing = woonwoon_normalize_price_to_float( $raw_existing );
+			if ( $val_existing > 0 ) {
+				update_post_meta( $post_id, 'pauschalmiete_numeric', $val_existing );
+			} else {
+				delete_post_meta( $post_id, 'pauschalmiete_numeric' );
+			}
+		} else {
+			delete_post_meta( $post_id, 'pauschalmiete_numeric' );
+		}
 		return;
 	}
 
@@ -315,7 +325,7 @@ function woonwoon_mirror_from_immomakler_metadata( int $post_id, $meta_value = n
 			delete_post_meta( $post_id, 'pauschalmiete_numeric' );
 		}
 	} else {
-		delete_post_meta( $post_id, 'pauschalmiete' );
+		// Do not delete raw `pauschalmiete` to avoid fighting with plugin imports.
 		delete_post_meta( $post_id, 'pauschalmiete_numeric' );
 	}
 }
@@ -386,8 +396,15 @@ add_action( 'admin_init', function () {
 			'no_found_rows'  => true,
 			'meta_query'     => [
 				[
-					'key'     => 'immomakler_metadata',
-					'compare' => 'EXISTS',
+					'relation' => 'OR',
+					[
+						'key'     => 'immomakler_metadata',
+						'compare' => 'EXISTS',
+					],
+					[
+						'key'     => 'pauschalmiete',
+						'compare' => 'EXISTS',
+					],
 				],
 				[
 					'key'     => 'pauschalmiete_numeric',
