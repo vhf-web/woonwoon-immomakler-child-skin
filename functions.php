@@ -41,6 +41,29 @@ add_filter( 'immomakler_property_data_single_keys', function ( $keys, $post_id )
 }, 20, 2 );
 
 /* ------------------------------------------------------------
+ * Single page: subtitle + "merken" label
+ * ------------------------------------------------------------ */
+
+// Replace "... zur Miete" with "Wohnen auf Zeit" on single pages.
+add_filter( 'immomakler_property_subtitle', function ( $subtitle ) {
+	if ( function_exists( 'is_immomakler_single' ) && is_immomakler_single() ) {
+		$subtitle = (string) $subtitle;
+
+		// Typical format: "PLZ Ort, Objektart zur Miete" -> "PLZ Ort, Wohnen auf Zeit"
+		$subtitle = preg_replace( '/,\s*[^,]+?\s+zur\s+Miete\s*$/u', ', Wohnen auf Zeit', $subtitle );
+
+		// Fallback if format differs: just replace the suffix.
+		$subtitle = preg_replace( '/\s+zur\s+Miete\s*$/u', ' Wohnen auf Zeit', $subtitle );
+	}
+	return (string) $subtitle;
+}, 20 );
+
+// Capitalize the favorites button label.
+add_filter( 'immomakler_cart_add_to_cart', function ( $caption ) {
+	return __( 'Merken', 'immomakler' );
+}, 20 );
+
+/* ------------------------------------------------------------
  * Single page: Adresse cleanup (regionaler_zusatz)
  * ------------------------------------------------------------ */
 
