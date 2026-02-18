@@ -166,7 +166,13 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	.single-immomakler_object .immomakler-single.immomakler{
 		margin: 4em 1.5em 0;
 	}
-	
+	.post-type-archive-immomakler_object .immomakler-archive{
+		margin: 0 1.5em 0;
+	}
+	.post-type-archive-immomakler_object #immomakler-search-advanced{
+		padding:0px;
+		margin-top:0px;
+	}
 
 	.single-immomakler_object .property-actions.btn-group .btn{
 		padding:7px;
