@@ -156,14 +156,32 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	font-weight: 400;
 	
 }
+.immomakler .checkbox label, .immomakler .radio label{
+	list-style: inherit;
+}
 
 /* Single: mobile responsive details list */
 @media (max-width: 767px) {
 	/* Requested mobile spacing */
 	.single-immomakler_object .immomakler-single.immomakler{
-		margin: 4em 2em 0;
+		margin: 4em 1.5em 0;
 	}
+	
 
+	.single-immomakler_object .property-actions.btn-group .btn{
+		padding:7px;
+	}
+	.single-immomakler_object .immomakler-single .property-navigation{
+		float:left;
+		margin:0px 0px 0px 10px;	
+		
+	}
+	.single-immomakler_objec .immomakler .panel-body{
+		padding: 0px;
+	}
+	.single-immomakler_object .property-gallery-static-with-thumbs{
+		margin-top: 2em;
+	}
 	/* Keep label/value in two columns on phones */
 	.single-immomakler_object .property-details .list-group-item .row{
 		display: flex;
@@ -193,10 +211,13 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 		overflow-wrap: anywhere;
 	}
 	.single-immomakler_object .property-details .list-group-item{
-		padding: 10px 12px;
+		padding: 6px 5px;
 	}
 	.single-immomakler_object .immomakler-single .panel-heading h2{
 		font-size: 1.4rem;
+	}
+	.immomakler .panel-heading{
+		padding: 0px;
 	}
 }
 .single-immomakler_object .property-gallery-static-with-thumbs{
