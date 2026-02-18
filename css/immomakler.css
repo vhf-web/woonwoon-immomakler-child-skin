@@ -41,6 +41,10 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
   margin-top: 2em;
 }
 
+.post-type-archive-immomakler_object .immomakler.immomakler-map{
+	margin-top: 0 !important;
+	padding-top: 0 !important;
+}
 /* Archive: map at top without spacing */
 .post-type-archive-immomakler_object .immomakler .archive-map,
 .post-type-archive-immomakler_object .immomakler .immomakler-map,
@@ -109,6 +113,12 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 		flex: 0 0 100%;
 		max-width: 100%;
 	}
+	.immomakler-archive .property-container.immomakler-archive-item-layout-condensed .property-title{
+		font-size: inherit;
+	}
+	.immomakler-archive .property-container.immomakler-archive-item-layout-condensed.separated-price .property-data > .property-data-item.price:last-child{
+		line-height: 3.7em;
+	}
 }
 
 /* Child-skin OrderBy placement under titles */
@@ -145,6 +155,49 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	font-family: "Montserrat", sans-serif;
 	font-weight: 400;
 	
+}
+
+/* Single: mobile responsive details list */
+@media (max-width: 767px) {
+	/* Requested mobile spacing */
+	.single-immomakler_object .immomakler-single.immomakler{
+		margin: 4em 2em 0;
+	}
+
+	/* Keep label/value in two columns on phones */
+	.single-immomakler_object .property-details .list-group-item .row{
+		display: flex;
+		flex-wrap: nowrap;
+		align-items: flex-start;
+		margin-left: 0;
+		margin-right: 0;
+	}
+	.single-immomakler_object .property-details .dt,
+	.single-immomakler_object .property-details .dd{
+		padding-left: 0;
+		padding-right: 0;
+		font-size: 14px;
+		line-height: 1.35;
+	}
+	.single-immomakler_object .property-details .dt{
+		flex: 0 0 44%;
+		max-width: 44%;
+		padding-right: 10px;
+	}
+	.single-immomakler_object .property-details .dd{
+		flex: 1 1 56%;
+		max-width: 56%;
+	}
+	.single-immomakler_object .property-details .dd{
+		word-break: break-word;
+		overflow-wrap: anywhere;
+	}
+	.single-immomakler_object .property-details .list-group-item{
+		padding: 10px 12px;
+	}
+	.single-immomakler_object .immomakler-single .panel-heading h2{
+		font-size: 1.4rem;
+	}
 }
 .single-immomakler_object .property-gallery-static-with-thumbs{
 	margin-top: 4em;
