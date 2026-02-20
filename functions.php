@@ -24,9 +24,9 @@ add_filter( 'immomakler_search_hide_advanced', '__return_false' );
 add_filter( 'immomakler_search_button_text', function ( $text, $count ) {
 	$count = absint( $count );
 	if ( $count > 0 ) {
-		return __( 'Show %s results', 'immomakler-child-skin' );
+		return __( '%s Ergebnisse anzeigen', 'immomakler-child-skin' );
 	}
-	return __( 'Show results', 'immomakler-child-skin' );
+	return __( 'Ergebnisse anzeigen', 'immomakler-child-skin' );
 }, 20, 2 );
 
 // Enqueue small JS to rearrange buttons + init selectpicker after AJAX refresh.
@@ -156,6 +156,109 @@ function woonwoon_clean_regionaler_zusatz_for_address( string $regionaler_zusatz
 
 	return trim( $r );
 }
+
+/**
+ * Mirror `regionaler_zusatz` into a normalized meta key for filtering.
+ * Stores:
+ * - regionaler_zusatz_clean (string)
+ */
+function woonwoon_mirror_regionaler_zusatz_clean( int $post_id ): void {
+	$post_id = (int) $post_id;
+	if ( $post_id <= 0 ) {
+		return;
+	}
+	if ( get_post_type( $post_id ) !== 'immomakler_object' ) {
+		return;
+	}
+
+	$raw = trim( (string) get_post_meta( $post_id, 'regionaler_zusatz', true ) );
+	if ( $raw === '' ) {
+		delete_post_meta( $post_id, 'regionaler_zusatz_clean' );
+		delete_transient( 'woonwoon_regionaler_zusatz_clean_options' );
+		return;
+	}
+
+	$clean = trim( woonwoon_clean_regionaler_zusatz_for_address( $raw ) );
+	if ( $clean === '' ) {
+		delete_post_meta( $post_id, 'regionaler_zusatz_clean' );
+		delete_transient( 'woonwoon_regionaler_zusatz_clean_options' );
+		return;
+	}
+
+	update_post_meta( $post_id, 'regionaler_zusatz_clean', $clean );
+	delete_transient( 'woonwoon_regionaler_zusatz_clean_options' );
+}
+
+// Keep mirror updated.
+add_action( 'updated_post_meta', function ( $meta_id, $post_id, $meta_key, $meta_value ) {
+	if ( $meta_key !== 'regionaler_zusatz' ) {
+		return;
+	}
+	woonwoon_mirror_regionaler_zusatz_clean( (int) $post_id );
+}, 10, 4 );
+
+add_action( 'added_post_meta', function ( $meta_id, $post_id, $meta_key, $meta_value ) {
+	if ( $meta_key !== 'regionaler_zusatz' ) {
+		return;
+	}
+	woonwoon_mirror_regionaler_zusatz_clean( (int) $post_id );
+}, 10, 4 );
+
+add_action( 'save_post_immomakler_object', function ( $post_id ) {
+	if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) ) {
+		return;
+	}
+	woonwoon_mirror_regionaler_zusatz_clean( (int) $post_id );
+}, 25 );
+
+add_action( 'immomakler_after_publish_post', function ( $post_id ) {
+	$post_id = (int) $post_id;
+	if ( $post_id <= 0 ) {
+		return;
+	}
+	woonwoon_mirror_regionaler_zusatz_clean( $post_id );
+}, 25 );
+
+/**
+ * Backfill `regionaler_zusatz_clean` for existing objects in small batches (admin only).
+ */
+add_action( 'admin_init', function () {
+	if ( get_option( 'woonwoon_regionaler_zusatz_clean_migrated' ) ) {
+		return;
+	}
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$q = new WP_Query(
+		[
+			'post_type'      => 'immomakler_object',
+			'fields'         => 'ids',
+			'posts_per_page' => 200,
+			'no_found_rows'  => true,
+			'meta_query'     => [
+				[
+					'key'     => 'regionaler_zusatz',
+					'compare' => 'EXISTS',
+				],
+				[
+					'key'     => 'regionaler_zusatz_clean',
+					'compare' => 'NOT EXISTS',
+				],
+			],
+		]
+	);
+
+	if ( empty( $q->posts ) ) {
+		update_option( 'woonwoon_regionaler_zusatz_clean_migrated', 1 );
+		return;
+	}
+
+	foreach ( $q->posts as $pid ) {
+		woonwoon_mirror_regionaler_zusatz_clean( (int) $pid );
+	}
+	delete_transient( 'woonwoon_regionaler_zusatz_clean_options' );
+} );
 
 add_filter( 'immomakler_property_data', function ( $property_data, $post_id ) {
 	if ( ! is_array( $property_data ) ) return $property_data;
@@ -523,6 +626,89 @@ function woonwoon_search_ranges( $ranges ) {
 	return $ranges;
 }
 
+/**
+ * Get numeric max for a given meta key (cached).
+ */
+function woonwoon_get_max_numeric_meta_value( string $meta_key, string $transient_key, int $ttl = DAY_IN_SECONDS ): float {
+	global $wpdb;
+
+	$max = get_transient( $transient_key );
+	if ( $max !== false ) {
+		return (float) $max;
+	}
+
+	$meta_key_sql = esc_sql( $meta_key );
+	$max          = (float) $wpdb->get_var(
+		"SELECT MAX(CAST(pm.meta_value AS DECIMAL(12,2)))
+		 FROM {$wpdb->postmeta} pm
+		 WHERE pm.meta_key = '{$meta_key_sql}'
+		   AND pm.meta_value IS NOT NULL
+		   AND pm.meta_value != ''"
+	);
+	set_transient( $transient_key, $max, $ttl );
+	return (float) $max;
+}
+
+/**
+ * Get Bezirk options from `regionaler_zusatz_clean` (cached).
+ *
+ * @return string[] list of unique, cleaned values
+ */
+function woonwoon_get_regionaler_zusatz_options(): array {
+	global $wpdb;
+
+	$cached = get_transient( 'woonwoon_regionaler_zusatz_clean_options' );
+	if ( is_array( $cached ) ) {
+		return $cached;
+	}
+
+	$rows = $wpdb->get_col(
+		"SELECT DISTINCT pm.meta_value
+		 FROM {$wpdb->postmeta} pm
+		 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+		 WHERE p.post_type = 'immomakler_object'
+		   AND p.post_status = 'publish'
+		   AND pm.meta_key = 'regionaler_zusatz_clean'
+		   AND pm.meta_value IS NOT NULL
+		   AND pm.meta_value != ''
+		 ORDER BY pm.meta_value ASC"
+	);
+
+	$vals = [];
+	foreach ( (array) $rows as $v ) {
+		$v = trim( (string) $v );
+		if ( $v === '' ) continue;
+		$vals[] = $v;
+	}
+	$vals = array_values( array_unique( $vals ) );
+
+	// Fallback: if clean options are not yet available, derive from raw key.
+	if ( empty( $vals ) ) {
+		$rows_raw = $wpdb->get_col(
+			"SELECT DISTINCT pm.meta_value
+			 FROM {$wpdb->postmeta} pm
+			 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+			 WHERE p.post_type = 'immomakler_object'
+			   AND p.post_status = 'publish'
+			   AND pm.meta_key = 'regionaler_zusatz'
+			   AND pm.meta_value IS NOT NULL
+			   AND pm.meta_value != ''
+			 ORDER BY pm.meta_value ASC"
+		);
+		$tmp = [];
+		foreach ( (array) $rows_raw as $raw ) {
+			$clean = trim( woonwoon_clean_regionaler_zusatz_for_address( (string) $raw ) );
+			if ( $clean === '' ) continue;
+			$tmp[] = $clean;
+		}
+		$vals = array_values( array_unique( $tmp ) );
+		sort( $vals, SORT_NATURAL | SORT_FLAG_CASE );
+	}
+
+	set_transient( 'woonwoon_regionaler_zusatz_clean_options', $vals, DAY_IN_SECONDS );
+	return $vals;
+}
+
 /* ------------------------------------------------------------
  * Search form: custom filter grid
  * ------------------------------------------------------------ */
@@ -551,25 +737,31 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 		? immomakler_get_currency_from_iso( ImmoMakler_Options::get( 'default_currency_iso' ) )
 		: 'EUR';
 
-	// Area (m²)
-	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-area">';
-	echo '<div class="range-label">' . esc_html__( 'Area (m²)', 'immomakler-child-skin' ) . '</div>';
-	echo '<div class="woonwoon-minmax">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="von-qm" placeholder="' . esc_attr__( 'Min', 'immomakler-child-skin' ) . '" value="' . esc_attr( $qm_min ) . '">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="bis-qm" placeholder="' . esc_attr__( 'Max', 'immomakler-child-skin' ) . '" value="' . esc_attr( $qm_max ) . '">';
-	echo '</div>';
-	echo '</fieldset>';
+	// Normalize: treat "0" and "full-range max" as empty so placeholders stay visible.
+	$qm_min_num = (float) str_replace( ',', '.', (string) $qm_min );
+	if ( $qm_min_num <= 0 ) $qm_min = '';
+	$qm_max_num = (float) str_replace( ',', '.', (string) $qm_max );
+	$qm_db_max  = woonwoon_get_max_numeric_meta_value( 'flaeche', 'woonwoon_flaeche_max_numeric' );
+	if ( $qm_max_num <= 0 ) {
+		$qm_max = '';
+	} elseif ( $qm_db_max > 0 && abs( $qm_max_num - $qm_db_max ) < 0.01 ) {
+		$qm_max = '';
+	}
 
-	// Rent (EUR) - backed by pauschalmiete_numeric
-	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-rent">';
-	echo '<div class="range-label">' . esc_html__( 'Rent', 'immomakler-child-skin' ) . ' (' . esc_html( $currency ) . ')</div>';
-	echo '<div class="woonwoon-minmax">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="von-pauschalmiete" placeholder="' . esc_attr__( 'Min', 'immomakler-child-skin' ) . '" value="' . esc_attr( $rent_min ) . '">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="bis-pauschalmiete" placeholder="' . esc_attr__( 'Max', 'immomakler-child-skin' ) . '" value="' . esc_attr( $rent_max ) . '">';
-	echo '</div>';
-	echo '</fieldset>';
+	$rent_min_num = (float) str_replace( ',', '.', (string) $rent_min );
+	if ( $rent_min_num <= 0 ) $rent_min = '';
+	$rent_max_num = (float) str_replace( ',', '.', (string) $rent_max );
+	$rent_db_max  = (float) get_transient( 'woonwoon_pauschalmiete_max_numeric' );
+	if ( $rent_db_max === 0.0 || $rent_db_max === false ) {
+		$rent_db_max = woonwoon_get_max_numeric_meta_value( 'pauschalmiete_numeric', 'woonwoon_pauschalmiete_max_numeric' );
+	}
+	if ( $rent_max_num <= 0 ) {
+		$rent_max = '';
+	} elseif ( $rent_db_max > 0 && abs( $rent_max_num - $rent_db_max ) < 0.01 ) {
+		$rent_max = '';
+	}
 
-	// Rooms (multi select)
+	// Rooms (multi select) - first column
 	$selected = [];
 	if ( isset( $_GET['zimmer_multi'] ) ) {
 		$selected = (array) wp_unslash( $_GET['zimmer_multi'] );
@@ -601,12 +793,64 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	];
 
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field immomakler-search-rooms">';
-	echo '<div class="range-label">' . esc_html__( 'Rooms', 'immomakler-child-skin' ) . '</div>';
-	echo '<select class="selectpicker form-control" name="zimmer_multi[]" multiple data-width="100%" data-actions-box="true" data-selected-text-format="count > 1" data-count-selected-text="{0} selected" title="' . esc_attr__( 'Select rooms', 'immomakler-child-skin' ) . '">';
+	echo '<div class="range-label">' . esc_html__( 'Zimmer', 'immomakler-child-skin' ) . '</div>';
+	echo '<select class="selectpicker form-control" name="zimmer_multi[]" multiple data-width="100%" data-actions-box="false" data-selected-text-format="count > 1" data-count-selected-text="{0} ausgewählt" title="' . esc_attr__( 'Zimmer auswählen', 'immomakler-child-skin' ) . '">';
 	foreach ( $options as $value => $label ) {
 		$is_selected = in_array( (string) $value, $selected, true ) ? ' selected' : '';
 		$lbl = ( $value === '5plus' ) ? '5+' : $label;
 		echo '<option value="' . esc_attr( (string) $value ) . '"' . $is_selected . '>' . esc_html( $lbl ) . '</option>';
+	}
+	echo '</select>';
+	echo '</fieldset>';
+
+	// Area (m²) - second column
+	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-area">';
+	echo '<div class="range-label">' . esc_html__( 'Fläche (m²)', 'immomakler-child-skin' ) . '</div>';
+	echo '<div class="woonwoon-minmax">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="von-qm" placeholder="' . esc_attr__( 'Min', 'immomakler-child-skin' ) . '" value="' . esc_attr( $qm_min ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="bis-qm" placeholder="' . esc_attr__( 'Max', 'immomakler-child-skin' ) . '" value="' . esc_attr( $qm_max ) . '">';
+	echo '</div>';
+	echo '</fieldset>';
+
+	// Rent (EUR) - third column (pauschalmiete_numeric)
+	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-rent">';
+	echo '<div class="range-label">' . esc_html__( 'Miete', 'immomakler-child-skin' ) . ' (' . esc_html( $currency ) . ')</div>';
+	echo '<div class="woonwoon-minmax">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="von-pauschalmiete" placeholder="' . esc_attr__( 'Min', 'immomakler-child-skin' ) . '" value="' . esc_attr( $rent_min ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="bis-pauschalmiete" placeholder="' . esc_attr__( 'Max', 'immomakler-child-skin' ) . '" value="' . esc_attr( $rent_max ) . '">';
+	echo '</div>';
+	echo '</fieldset>';
+
+	// Bezirk / Ortsteil (regionaler_zusatz)
+	$bezirk_selected = [];
+	if ( isset( $_GET['bezirk'] ) ) {
+		$bezirk_selected = (array) wp_unslash( $_GET['bezirk'] );
+	} elseif ( isset( $_POST['bezirk'] ) ) {
+		$bezirk_selected = (array) wp_unslash( $_POST['bezirk'] );
+	}
+	$bezirk_selected = array_values(
+		array_unique(
+			array_filter(
+				array_map(
+					static function ( $v ) {
+						return sanitize_text_field( (string) $v );
+					},
+					$bezirk_selected
+				),
+				static function ( $v ) {
+					return $v !== '';
+				}
+			)
+		)
+	);
+
+	$bezirk_options = woonwoon_get_regionaler_zusatz_options();
+	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-bezirk">';
+	echo '<div class="range-label">' . esc_html__( 'Bezirk / Ortsteil', 'immomakler-child-skin' ) . '</div>';
+	echo '<select class="selectpicker form-control" name="bezirk[]" multiple data-width="100%" data-actions-box="false" data-live-search="true" data-selected-text-format="count > 1" data-count-selected-text="{0} ausgewählt" title="' . esc_attr__( 'Bezirk wählen', 'immomakler-child-skin' ) . '">';
+	foreach ( $bezirk_options as $v ) {
+		$is_selected = in_array( (string) $v, $bezirk_selected, true ) ? ' selected' : '';
+		echo '<option value="' . esc_attr( (string) $v ) . '"' . $is_selected . '>' . esc_html( (string) $v ) . '</option>';
 	}
 	echo '</select>';
 	echo '</fieldset>';
@@ -696,6 +940,31 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 		return;
 	}
 
+	/**
+	 * Force Objektart = Wohnung (taxonomy `immomakler_object_type`).
+	 * This keeps the archive/listing limited to apartments only.
+	 */
+	$taxonomy = apply_filters( 'immomakler_property_type_taxonomy', 'immomakler_object_type' );
+	$wohnung_slug = 'wohnung';
+	if ( class_exists( '\ImmoMakler\Helpers\I18n_Helper' ) ) {
+		$wohnung_slug = \ImmoMakler\Helpers\I18n_Helper::generate_i18n_term_slug( 'Wohnung' );
+	} elseif ( function_exists( 'sanitize_title' ) ) {
+		$wohnung_slug = sanitize_title( 'Wohnung' );
+	}
+
+	$tax_query = $query->get( 'tax_query' );
+	if ( ! is_array( $tax_query ) ) {
+		$tax_query = [];
+	}
+	$tax_query[] = [
+		'taxonomy'         => $taxonomy,
+		'field'            => 'slug',
+		'terms'            => [ $wohnung_slug ],
+		'include_children' => true,
+		'operator'         => 'IN',
+	];
+	$query->set( 'tax_query', $tax_query );
+
 	$meta_query = $query->get( 'meta_query' );
 	if ( ! is_array( $meta_query ) ) {
 		$meta_query = [];
@@ -711,6 +980,10 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 
 	$qm_from = abs( floatval( str_replace( ',', '.', (string) $qm_von ) ) );
 	$qm_to   = abs( floatval( str_replace( ',', '.', (string) $qm_bis ) ) );
+	$qm_db_max = woonwoon_get_max_numeric_meta_value( 'flaeche', 'woonwoon_flaeche_max_numeric' );
+	if ( $qm_to > 0 && $qm_db_max > 0 && abs( $qm_to - $qm_db_max ) < 0.01 ) {
+		$qm_to = 0; // full range => no filter
+	}
 	if ( $qm_from > 0 || $qm_to > 0 ) {
 		if ( $qm_from > 0 && $qm_to > 0 ) {
 			if ( $qm_from > $qm_to ) {
@@ -782,6 +1055,14 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 
 		$op = null;
 		$val = null;
+		$rent_db_max = (float) get_transient( 'woonwoon_pauschalmiete_max_numeric' );
+		if ( $rent_db_max === 0.0 || $rent_db_max === false ) {
+			$rent_db_max = woonwoon_get_max_numeric_meta_value( 'pauschalmiete_numeric', 'woonwoon_pauschalmiete_max_numeric' );
+		}
+		if ( $bis > 0 && $rent_db_max > 0 && abs( $bis - $rent_db_max ) < 0.01 ) {
+			$bis = 0; // full range => no filter
+		}
+
 		if ( $von > 0 && $bis > 0 ) {
 			if ( $von > $bis ) {
 				$tmp = $von;
@@ -878,6 +1159,49 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 		if ( count( $or ) > 1 ) {
 			$meta_query[] = $or;
 		}
+	}
+
+	/**
+	 * Bezirk / Ortsteil dropdown (multi-select):
+	 * - Uses GET/POST param `bezirk[]`
+	 * - Filters meta_key `regionaler_zusatz_clean` (preferred) with fallback to raw `regionaler_zusatz` (LIKE)
+	 */
+	$bezirk = [];
+	if ( isset( $_GET['bezirk'] ) ) {
+		$bezirk = (array) wp_unslash( $_GET['bezirk'] );
+	} elseif ( isset( $_POST['bezirk'] ) ) {
+		$bezirk = (array) wp_unslash( $_POST['bezirk'] );
+	}
+	$bezirk = array_values(
+		array_unique(
+			array_filter(
+				array_map(
+					static function ( $v ) {
+						return sanitize_text_field( (string) $v );
+					},
+					$bezirk
+				),
+				static function ( $v ) {
+					return $v !== '';
+				}
+			)
+		)
+	);
+	if ( ! empty( $bezirk ) ) {
+		$or_bezirk = [ 'relation' => 'OR' ];
+		$or_bezirk[] = [
+			'key'     => 'regionaler_zusatz_clean',
+			'value'   => $bezirk,
+			'compare' => 'IN',
+		];
+		foreach ( $bezirk as $b ) {
+			$or_bezirk[] = [
+				'key'     => 'regionaler_zusatz',
+				'value'   => $b,
+				'compare' => 'LIKE',
+			];
+		}
+		$meta_query[] = $or_bezirk;
 	}
 
 	$query->set( 'meta_query', $meta_query );

@@ -126,6 +126,10 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	gap: 12px;
 	margin: 0;
 }
+.post-type-archive-immomakler_object .immomakler .search-ranges.row :before{
+	content: "";
+	display: none;
+}
 @media (max-width: 767px) {
 	.post-type-archive-immomakler_object .immomakler .search-ranges.row {
 		grid-template-columns: 1fr;
@@ -139,6 +143,9 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	padding: 10px;
 	margin: 0;
 	min-width: 0;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-bezirk {
+	grid-column: 1 / -1;
 }
 .post-type-archive-immomakler_object .immomakler .woonwoon-filter-field .range-label {
 	display: block;
@@ -192,6 +199,18 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	margin: 0;
 	display: flex;
 	justify-content: flex-end;
+	gap: 12px;
+	align-items: center;
+}
+.post-type-archive-immomakler_object .immomakler .search-actions.row .woonwoon-reset-link {
+	color: rgba(15, 23, 42, 0.65);
+	text-decoration: underline;
+	padding: 0;
+	border: 0;
+	background: transparent;
+}
+.post-type-archive-immomakler_object .immomakler .search-actions.row .woonwoon-reset-link:hover {
+	color: rgba(15, 23, 42, 0.85);
 }
 .post-type-archive-immomakler_object .immomakler .immomakler-submit.btn.btn-primary {
 	min-height: 44px;
@@ -208,6 +227,15 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 /* Hide the advanced toggle button (always visible filters) */
 .post-type-archive-immomakler_object .immomakler .immomakler-more-options {
 	display: none !important;
+}
+
+/* Rooms dropdown: show a "checkbox" icon for every option line */
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a .check-mark {
+	display: inline-block !important;
+	opacity: 0.25;
+}
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li.selected a .check-mark {
+	opacity: 1;
 }
 
 @media (max-width: 1024px) {

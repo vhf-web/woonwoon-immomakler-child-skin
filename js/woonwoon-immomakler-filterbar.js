@@ -25,8 +25,7 @@
         } else {
           $el.selectpicker({
             tickIcon: 'glyphicon-check',
-            doneButton: true,
-            doneButtonText: 'markierte auswählen',
+            doneButton: false,
           });
         }
       } catch (_) {
@@ -60,28 +59,26 @@
       }
 
       // Move reset into a subtle secondary line under filters.
-      const $collapse = $module.find('[id$="collapseable-search"]').first();
-      const $panelBody = $collapse.find('.panel-body').first();
-      const $ranges = $panelBody.find('.search-ranges').first();
       const $reset = $('#immomakler-search-reset').length
         ? $('#immomakler-search-reset')
         : $module.find('#immomakler-search-reset').first();
-
-      if ($panelBody.length && $ranges.length && $reset.length) {
-        let $secondary = $panelBody.children('.woonwoon-filter-secondary');
-        if (!$secondary.length) {
-          $secondary = $('<div class="woonwoon-filter-secondary" />');
-          $secondary.insertAfter($ranges);
-        }
-        $reset.removeClass('btn btn-secondary').addClass('woonwoon-reset-link');
-        $secondary.empty().append($reset);
-      }
 
       // Keep only the primary CTA in the actions row.
       const $actionsRow = $module.find('.search-actions.row').first();
       if ($actionsRow.length) {
         $actionsRow.find('.immomakler-more-options, .search-for-id, .btn-secondary, .immomakler-cart-button, .immomakler-cart-link').remove();
         $actionsRow.find('a.btn').not('.immomakler-submit').remove();
+
+        // Put reset link on same line as CTA.
+        if ($reset.length) {
+          $reset.removeClass('btn btn-secondary').addClass('woonwoon-reset-link');
+          // Ensure it sits before the CTA.
+          if (!$actionsRow.find('#immomakler-search-reset').length) {
+            $actionsRow.prepend($reset);
+          } else {
+            $actionsRow.find('#immomakler-search-reset').prependTo($actionsRow);
+          }
+        }
       }
     });
   }
