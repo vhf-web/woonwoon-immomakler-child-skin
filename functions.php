@@ -17,6 +17,41 @@
  * UI tweaks
  * ------------------------------------------------------------ */
 
+// Filter bar redesign: keep advanced filters visible (no collapse UX).
+add_filter( 'immomakler_search_hide_advanced', '__return_false' );
+
+// Primary CTA label.
+add_filter( 'immomakler_search_button_text', function ( $text, $count ) {
+	$count = absint( $count );
+	if ( $count > 0 ) {
+		return __( 'Show %s results', 'immomakler-child-skin' );
+	}
+	return __( 'Show results', 'immomakler-child-skin' );
+}, 20, 2 );
+
+// Enqueue small JS to rearrange buttons + init selectpicker after AJAX refresh.
+add_action( 'wp_enqueue_scripts', function () {
+	if ( is_admin() ) {
+		return;
+	}
+	$is_archive = false;
+	if ( function_exists( 'is_immomakler_archive' ) ) {
+		$is_archive = (bool) is_immomakler_archive();
+	} elseif ( function_exists( 'is_post_type_archive' ) ) {
+		$is_archive = (bool) is_post_type_archive( 'immomakler_object' );
+	}
+	if ( ! $is_archive ) {
+		return;
+	}
+	wp_enqueue_script(
+		'woonwoon-immomakler-filterbar',
+		plugins_url( 'js/woonwoon-immomakler-filterbar.js', __FILE__ ),
+		[ 'jquery' ],
+		'2026-02-20.1',
+		true
+	);
+}, 30 );
+
 // Archive subtitle
 add_filter( 'immomakler_archive_subheadline', function ( $title ) {
 	return 'Appartments';
@@ -474,35 +509,22 @@ add_action( 'admin_init', function () {
 } );
 
 /* ------------------------------------------------------------
- * Ranges: keep Fläche from plugin, add Pauschalmiete, remove Kaltmiete + Kaufpreis + Zimmer slider (we use our own Zimmer dropdown)
+ * Ranges: remove all range sliders/text fields (we render custom fields)
  * ------------------------------------------------------------ */
 
 add_filter( 'immomakler_search_enabled_ranges', 'woonwoon_search_ranges', 20 );
 
 function woonwoon_search_ranges( $ranges ) {
 	unset( $ranges['immomakler_search_price_rent'], $ranges['immomakler_search_price_buy'] );
-	// Replace plugin "Zimmer" range slider with a multi-select dropdown.
+	// Replace plugin ranges with custom fields.
 	unset( $ranges['immomakler_search_rooms'] );
-
-	$currency = function_exists( 'immomakler_get_currency_from_iso' )
-		? immomakler_get_currency_from_iso( ImmoMakler_Options::get( 'default_currency_iso' ) )
-		: 'EUR';
-
-	$ranges['immomakler_search_pauschalmiete'] = [
-		'label'       => __( 'Pauschalmiete max.', 'immomakler' ),
-		'slug'        => 'pauschalmiete',
-		'unit'        => $currency,
-		'decimals'    => 0,
-		// Use normalized numeric field for correct comparisons.
-		'meta_key'    => 'pauschalmiete_numeric',
-		'slider_step' => 100,
-	];
+	unset( $ranges['immomakler_search_size'] );
 
 	return $ranges;
 }
 
 /* ------------------------------------------------------------
- * Search form: Zimmer dropdown (multi-select with checkbox UI)
+ * Search form: custom filter grid
  * ------------------------------------------------------------ */
 
 add_action( 'immomakler_search_form_after_ranges', function () {
@@ -510,6 +532,44 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 		return;
 	}
 
+	// Values for min/max fields (keep empty if not set => placeholders visible).
+	$qm_min = '';
+	$qm_max = '';
+	if ( isset( $_GET['von-qm'] ) ) $qm_min = sanitize_text_field( (string) wp_unslash( $_GET['von-qm'] ) );
+	if ( isset( $_GET['bis-qm'] ) ) $qm_max = sanitize_text_field( (string) wp_unslash( $_GET['bis-qm'] ) );
+	if ( $qm_min === '' && isset( $_POST['von-qm'] ) ) $qm_min = sanitize_text_field( (string) wp_unslash( $_POST['von-qm'] ) );
+	if ( $qm_max === '' && isset( $_POST['bis-qm'] ) ) $qm_max = sanitize_text_field( (string) wp_unslash( $_POST['bis-qm'] ) );
+
+	$rent_min = '';
+	$rent_max = '';
+	if ( isset( $_GET['von-pauschalmiete'] ) ) $rent_min = sanitize_text_field( (string) wp_unslash( $_GET['von-pauschalmiete'] ) );
+	if ( isset( $_GET['bis-pauschalmiete'] ) ) $rent_max = sanitize_text_field( (string) wp_unslash( $_GET['bis-pauschalmiete'] ) );
+	if ( $rent_min === '' && isset( $_POST['von-pauschalmiete'] ) ) $rent_min = sanitize_text_field( (string) wp_unslash( $_POST['von-pauschalmiete'] ) );
+	if ( $rent_max === '' && isset( $_POST['bis-pauschalmiete'] ) ) $rent_max = sanitize_text_field( (string) wp_unslash( $_POST['bis-pauschalmiete'] ) );
+
+	$currency = function_exists( 'immomakler_get_currency_from_iso' )
+		? immomakler_get_currency_from_iso( ImmoMakler_Options::get( 'default_currency_iso' ) )
+		: 'EUR';
+
+	// Area (m²)
+	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-area">';
+	echo '<div class="range-label">' . esc_html__( 'Area (m²)', 'immomakler-child-skin' ) . '</div>';
+	echo '<div class="woonwoon-minmax">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="von-qm" placeholder="' . esc_attr__( 'Min', 'immomakler-child-skin' ) . '" value="' . esc_attr( $qm_min ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="bis-qm" placeholder="' . esc_attr__( 'Max', 'immomakler-child-skin' ) . '" value="' . esc_attr( $qm_max ) . '">';
+	echo '</div>';
+	echo '</fieldset>';
+
+	// Rent (EUR) - backed by pauschalmiete_numeric
+	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-rent">';
+	echo '<div class="range-label">' . esc_html__( 'Rent', 'immomakler-child-skin' ) . ' (' . esc_html( $currency ) . ')</div>';
+	echo '<div class="woonwoon-minmax">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="von-pauschalmiete" placeholder="' . esc_attr__( 'Min', 'immomakler-child-skin' ) . '" value="' . esc_attr( $rent_min ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="bis-pauschalmiete" placeholder="' . esc_attr__( 'Max', 'immomakler-child-skin' ) . '" value="' . esc_attr( $rent_max ) . '">';
+	echo '</div>';
+	echo '</fieldset>';
+
+	// Rooms (multi select)
 	$selected = [];
 	if ( isset( $_GET['zimmer_multi'] ) ) {
 		$selected = (array) wp_unslash( $_GET['zimmer_multi'] );
@@ -533,23 +593,20 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	);
 
 	$options = [
-		'1'     => '1 Zimmer',
-		'1.5'   => '1,5 Zimmer',
-		'2'     => '2 Zimmer',
-		'2.5'   => '2,5 Zimmer',
-		'3'     => '3 Zimmer',
-		'3.5'   => '3,5 Zimmer',
-		'4'     => '4 Zimmer',
-		'4.5'   => '4,5 Zimmer',
-		'5plus' => '5+ Zimmer',
+		'1'     => '1',
+		'2'     => '2',
+		'3'     => '3',
+		'4'     => '4',
+		'5plus' => '5+',
 	];
 
-	echo '<fieldset class="immomakler-search-range immomakler-search-rooms col-xs-12 col-sm-4">';
-	echo '<div class="immomakler-search-range-text"><span class="range-label">' . esc_html__( 'Zimmer', 'immomakler' ) . ':</span></div>';
-	echo '<select class="selectpicker form-control" name="zimmer_multi[]" multiple data-width="100%" data-actions-box="true" data-selected-text-format="count > 1" title="' . esc_attr__( 'Zimmer auswählen', 'immomakler' ) . '">';
+	echo '<fieldset class="immomakler-search-range woonwoon-filter-field immomakler-search-rooms">';
+	echo '<div class="range-label">' . esc_html__( 'Rooms', 'immomakler-child-skin' ) . '</div>';
+	echo '<select class="selectpicker form-control" name="zimmer_multi[]" multiple data-width="100%" data-actions-box="true" data-selected-text-format="count > 1" data-count-selected-text="{0} selected" title="' . esc_attr__( 'Select rooms', 'immomakler-child-skin' ) . '">';
 	foreach ( $options as $value => $label ) {
 		$is_selected = in_array( (string) $value, $selected, true ) ? ' selected' : '';
-		echo '<option value="' . esc_attr( (string) $value ) . '"' . $is_selected . '>' . esc_html( $label ) . '</option>';
+		$lbl = ( $value === '5plus' ) ? '5+' : $label;
+		echo '<option value="' . esc_attr( (string) $value ) . '"' . $is_selected . '>' . esc_html( $lbl ) . '</option>';
 	}
 	echo '</select>';
 	echo '</fieldset>';
@@ -644,6 +701,46 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 		$meta_query = [];
 	}
 
+	// Area (m²): GET/POST params `von-qm` / `bis-qm` filter meta_key `flaeche`
+	$qm_von = $query->get( 'von-qm' );
+	$qm_bis = $query->get( 'bis-qm' );
+	if ( $qm_von === null || $qm_von === '' ) $qm_von = isset( $_GET['von-qm'] ) ? trim( (string) wp_unslash( $_GET['von-qm'] ) ) : '';
+	if ( $qm_bis === null || $qm_bis === '' ) $qm_bis = isset( $_GET['bis-qm'] ) ? trim( (string) wp_unslash( $_GET['bis-qm'] ) ) : '';
+	if ( $qm_von === null || $qm_von === '' ) $qm_von = isset( $_POST['von-qm'] ) ? trim( (string) wp_unslash( $_POST['von-qm'] ) ) : '';
+	if ( $qm_bis === null || $qm_bis === '' ) $qm_bis = isset( $_POST['bis-qm'] ) ? trim( (string) wp_unslash( $_POST['bis-qm'] ) ) : '';
+
+	$qm_from = abs( floatval( str_replace( ',', '.', (string) $qm_von ) ) );
+	$qm_to   = abs( floatval( str_replace( ',', '.', (string) $qm_bis ) ) );
+	if ( $qm_from > 0 || $qm_to > 0 ) {
+		if ( $qm_from > 0 && $qm_to > 0 ) {
+			if ( $qm_from > $qm_to ) {
+				$tmp     = $qm_from;
+				$qm_from = $qm_to;
+				$qm_to   = $tmp;
+			}
+			$meta_query[] = [
+				'key'     => 'flaeche',
+				'value'   => [ $qm_from, $qm_to ],
+				'type'    => 'NUMERIC',
+				'compare' => 'BETWEEN',
+			];
+		} elseif ( $qm_from > 0 ) {
+			$meta_query[] = [
+				'key'     => 'flaeche',
+				'value'   => $qm_from,
+				'type'    => 'NUMERIC',
+				'compare' => '>=',
+			];
+		} else {
+			$meta_query[] = [
+				'key'     => 'flaeche',
+				'value'   => $qm_to,
+				'type'    => 'NUMERIC',
+				'compare' => '<=',
+			];
+		}
+	}
+
 	/**
 	 * Pauschalmiete:
 	 * The plugin slider uses GET params `von-pauschalmiete` and `bis-pauschalmiete`
@@ -673,24 +770,42 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 		$von = abs( floatval( str_replace( ',', '.', (string) $von_raw ) ) );
 		$bis = abs( floatval( str_replace( ',', '.', (string) $bis_raw ) ) );
 
-		if ( $bis > 0 && $von <= $bis ) {
-			// Remove the plugin's `pauschalmiete_numeric` clause (if already present), replace with OR group.
-			foreach ( $meta_query as $k => $clause ) {
-				if ( $k === 'relation' || ! is_array( $clause ) ) {
-					continue;
-				}
-				if ( isset( $clause['key'] ) && $clause['key'] === 'pauschalmiete_numeric' ) {
-					unset( $meta_query[ $k ] );
-				}
+		// Remove any existing plugin clause, we replace with robust OR group(s).
+		foreach ( $meta_query as $k => $clause ) {
+			if ( $k === 'relation' || ! is_array( $clause ) ) {
+				continue;
 			}
+			if ( isset( $clause['key'] ) && $clause['key'] === 'pauschalmiete_numeric' ) {
+				unset( $meta_query[ $k ] );
+			}
+		}
 
+		$op = null;
+		$val = null;
+		if ( $von > 0 && $bis > 0 ) {
+			if ( $von > $bis ) {
+				$tmp = $von;
+				$von = $bis;
+				$bis = $tmp;
+			}
+			$op  = 'BETWEEN';
+			$val = [ $von, $bis ];
+		} elseif ( $von > 0 ) {
+			$op  = '>=';
+			$val = $von;
+		} elseif ( $bis > 0 ) {
+			$op  = '<=';
+			$val = $bis;
+		}
+
+		if ( $op && $val !== null ) {
 			$meta_query[] = [
 				'relation' => 'OR',
 				[
 					'key'     => 'pauschalmiete_numeric',
-					'value'   => [ $von, $bis ],
+					'value'   => $val,
 					'type'    => 'NUMERIC',
-					'compare' => 'BETWEEN',
+					'compare' => $op,
 				],
 				[
 					'relation' => 'AND',
@@ -700,9 +815,9 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 					],
 					[
 						'key'     => 'pauschalmiete',
-						'value'   => [ $von, $bis ],
+						'value'   => $val,
 						'type'    => 'NUMERIC',
-						'compare' => 'BETWEEN',
+						'compare' => $op,
 					],
 				],
 			];
