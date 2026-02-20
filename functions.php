@@ -25,10 +25,6 @@ add_filter( 'immomakler_search_selectpicker_show_done_button', '__return_false' 
 
 // Primary CTA label.
 add_filter( 'immomakler_search_button_text', function ( $text, $count ) {
-	$count = absint( $count );
-	if ( $count > 0 ) {
-		return __( '%s Ergebnisse anzeigen', 'immomakler-child-skin' );
-	}
 	return __( 'Ergebnisse anzeigen', 'immomakler-child-skin' );
 }, 20, 2 );
 

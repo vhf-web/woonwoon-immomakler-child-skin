@@ -171,7 +171,12 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 }
 .post-type-archive-immomakler_object .immomakler .immomakler-search-rooms .bootstrap-select > .dropdown-toggle {
 	height: 44px;
-	border-radius: 10px;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-bezirk .bootstrap-select {
+	width: 100% !important;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-bezirk .bootstrap-select > .dropdown-toggle {
+	height: 44px;
 }
 
 /* Secondary actions (reset link) */
@@ -236,14 +241,19 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 }
 .post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li.selected a .check-mark {
 	opacity: 1;
+    position: relative;
+    right: 0px;
+    top: 0px;
 }
 
 /* Dropdown checkbox icon: override global glyphicon hearts */
 .post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a .check-mark.glyphicon-check:before {
 	content: "\2610"; /* ☐ */
+	font-size:20px;
 }
 .post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li.selected a .check-mark.glyphicon-check:before {
 	content: "\2611"; /* ☑ */
+	font-size:20px;
 }
 
 /* Dropdown option layout: checkbox left, label right, no jumping */
