@@ -122,7 +122,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 }
 .post-type-archive-immomakler_object .immomakler .search-ranges.row {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(4, minmax(0, 1fr));
 	gap: 12px;
 	margin: 0;
 }
@@ -236,6 +236,14 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 }
 .post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li.selected a .check-mark {
 	opacity: 1;
+}
+
+/* Dropdown checkbox icon: override global glyphicon hearts */
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a .check-mark.glyphicon-check:before {
+	content: "\2610"; /* ☐ */
+}
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li.selected a .check-mark.glyphicon-check:before {
+	content: "\2611"; /* ☑ */
 }
 
 @media (max-width: 1024px) {

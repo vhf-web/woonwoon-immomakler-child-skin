@@ -20,6 +20,9 @@
 // Filter bar redesign: keep advanced filters visible (no collapse UX).
 add_filter( 'immomakler_search_hide_advanced', '__return_false' );
 
+// Selectpicker: remove the "markiert auswählen" done button.
+add_filter( 'immomakler_search_selectpicker_show_done_button', '__return_false' );
+
 // Primary CTA label.
 add_filter( 'immomakler_search_button_text', function ( $text, $count ) {
 	$count = absint( $count );
