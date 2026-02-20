@@ -126,7 +126,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	gap: 12px;
 	margin: 0;
 }
-.post-type-archive-immomakler_object .immomakler .search-ranges.row :before{
+.post-type-archive-immomakler_object .immomakler .search-ranges.row:before{
 	content: "";
 	display: none;
 }

@@ -445,13 +445,15 @@ function woonwoon_normalize_price_to_float( $raw ): float {
 }
 
 /* ------------------------------------------------------------
- * Mirror pauschalmiete out of immomakler_metadata container
+ * Mirror fields out of immomakler_metadata container
  * ------------------------------------------------------------ */
 
 /**
- * Read pauschalmiete from immomakler_metadata (array) and mirror to dedicated meta keys.
+ * Read fields from immomakler_metadata (array) and mirror to dedicated meta keys.
  * - pauschalmiete (raw string)
  * - pauschalmiete_numeric (float)
+ * - regionaler_zusatz (raw string)
+ * - regionaler_zusatz_clean (normalized string, for filtering)
  */
 function woonwoon_mirror_from_immomakler_metadata( int $post_id, $meta_value = null ): void {
 	// Get container (if not passed)
@@ -480,6 +482,20 @@ function woonwoon_mirror_from_immomakler_metadata( int $post_id, $meta_value = n
 		} else {
 			delete_post_meta( $post_id, 'pauschalmiete_numeric' );
 		}
+
+		// Regionaler Zusatz: keep existing mirrored keys if present; only recompute clean from existing raw key.
+		$rz_existing = trim( (string) get_post_meta( $post_id, 'regionaler_zusatz', true ) );
+		if ( $rz_existing !== '' ) {
+			$rz_clean_existing = trim( woonwoon_clean_regionaler_zusatz_for_address( $rz_existing ) );
+			if ( $rz_clean_existing !== '' ) {
+				update_post_meta( $post_id, 'regionaler_zusatz_clean', $rz_clean_existing );
+			} else {
+				delete_post_meta( $post_id, 'regionaler_zusatz_clean' );
+			}
+		} else {
+			delete_post_meta( $post_id, 'regionaler_zusatz_clean' );
+		}
+		delete_transient( 'woonwoon_regionaler_zusatz_clean_options' );
 		return;
 	}
 
@@ -500,6 +516,23 @@ function woonwoon_mirror_from_immomakler_metadata( int $post_id, $meta_value = n
 		// Do not delete raw `pauschalmiete` to avoid fighting with plugin imports.
 		delete_post_meta( $post_id, 'pauschalmiete_numeric' );
 	}
+
+	// Regionaler Zusatz (Bezirk/Ortsteil) from container.
+	$rz_raw = isset( $data['regionaler_zusatz'] ) ? (string) $data['regionaler_zusatz'] : '';
+	$rz_raw = trim( $rz_raw );
+	if ( $rz_raw !== '' ) {
+		update_post_meta( $post_id, 'regionaler_zusatz', $rz_raw );
+		$rz_clean = trim( woonwoon_clean_regionaler_zusatz_for_address( $rz_raw ) );
+		if ( $rz_clean !== '' ) {
+			update_post_meta( $post_id, 'regionaler_zusatz_clean', $rz_clean );
+		} else {
+			delete_post_meta( $post_id, 'regionaler_zusatz_clean' );
+		}
+	} else {
+		// Do not delete raw `regionaler_zusatz` to avoid fighting with plugin imports.
+		delete_post_meta( $post_id, 'regionaler_zusatz_clean' );
+	}
+	delete_transient( 'woonwoon_regionaler_zusatz_clean_options' );
 }
 
 /**
@@ -609,6 +642,48 @@ add_action( 'admin_init', function () {
 	foreach ( $q->posts as $pid ) {
 		woonwoon_mirror_from_immomakler_metadata( (int) $pid );
 	}
+} );
+
+/**
+ * Backfill `regionaler_zusatz_clean` from the container meta (admin only).
+ */
+add_action( 'admin_init', function () {
+	if ( get_option( 'woonwoon_regionaler_zusatz_clean_from_container_migrated' ) ) {
+		return;
+	}
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$q = new WP_Query(
+		[
+			'post_type'      => 'immomakler_object',
+			'fields'         => 'ids',
+			'posts_per_page' => 200,
+			'no_found_rows'  => true,
+			'meta_query'     => [
+				[
+					'key'     => 'immomakler_metadata',
+					'compare' => 'EXISTS',
+				],
+				[
+					'key'     => 'regionaler_zusatz_clean',
+					'compare' => 'NOT EXISTS',
+				],
+			],
+		]
+	);
+
+	if ( empty( $q->posts ) ) {
+		update_option( 'woonwoon_regionaler_zusatz_clean_from_container_migrated', 1 );
+		return;
+	}
+
+	foreach ( $q->posts as $pid ) {
+		woonwoon_mirror_from_immomakler_metadata( (int) $pid );
+	}
+
+	delete_transient( 'woonwoon_regionaler_zusatz_clean_options' );
 } );
 
 /* ------------------------------------------------------------
