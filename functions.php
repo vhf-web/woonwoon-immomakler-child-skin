@@ -17,37 +17,6 @@
  * UI tweaks
  * ------------------------------------------------------------ */
 
-// Archive search UX:
-// - keep filters always visible (no collapse / "mehr Optionen")
-// - we implement our own debounced autosubmit (JS) to avoid double submits / jitter while dragging sliders
-add_filter( 'immomakler_search_hide_advanced', '__return_false' );
-add_filter( 'immomakler_searchform_autosubmit_on_change_rangesliders', '__return_false' );
-
-add_action( 'wp_enqueue_scripts', function () {
-	if ( is_admin() ) {
-		return;
-	}
-
-	$is_archive = false;
-	if ( function_exists( 'is_immomakler_archive' ) ) {
-		$is_archive = (bool) is_immomakler_archive();
-	} elseif ( function_exists( 'is_post_type_archive' ) ) {
-		$is_archive = (bool) is_post_type_archive( 'immomakler_object' );
-	}
-
-	if ( ! $is_archive ) {
-		return;
-	}
-
-	wp_enqueue_script(
-		'woonwoon-immomakler-filter-ux',
-		plugins_url( 'js/woonwoon-immomakler-filter-ux.js', __FILE__ ),
-		[ 'jquery' ],
-		'2026-02-20.1',
-		true
-	);
-}, 20 );
-
 // Archive subtitle
 add_filter( 'immomakler_archive_subheadline', function ( $title ) {
 	return 'Appartments';
@@ -505,13 +474,15 @@ add_action( 'admin_init', function () {
 } );
 
 /* ------------------------------------------------------------
- * Ranges: keep Zimmer + Fläche from plugin, add Pauschalmiete, remove Kaltmiete + Kaufpreis
+ * Ranges: keep Fläche from plugin, add Pauschalmiete, remove Kaltmiete + Kaufpreis + Zimmer slider (we use our own Zimmer dropdown)
  * ------------------------------------------------------------ */
 
 add_filter( 'immomakler_search_enabled_ranges', 'woonwoon_search_ranges', 20 );
 
 function woonwoon_search_ranges( $ranges ) {
 	unset( $ranges['immomakler_search_price_rent'], $ranges['immomakler_search_price_buy'] );
+	// Replace plugin "Zimmer" range slider with a multi-select dropdown.
+	unset( $ranges['immomakler_search_rooms'] );
 
 	$currency = function_exists( 'immomakler_get_currency_from_iso' )
 		? immomakler_get_currency_from_iso( ImmoMakler_Options::get( 'default_currency_iso' ) )
@@ -529,6 +500,60 @@ function woonwoon_search_ranges( $ranges ) {
 
 	return $ranges;
 }
+
+/* ------------------------------------------------------------
+ * Search form: Zimmer dropdown (multi-select with checkbox UI)
+ * ------------------------------------------------------------ */
+
+add_action( 'immomakler_search_form_after_ranges', function () {
+	if ( is_admin() ) {
+		return;
+	}
+
+	$selected = [];
+	if ( isset( $_GET['zimmer_multi'] ) ) {
+		$selected = (array) wp_unslash( $_GET['zimmer_multi'] );
+	} elseif ( isset( $_POST['zimmer_multi'] ) ) {
+		$selected = (array) wp_unslash( $_POST['zimmer_multi'] );
+	}
+	$selected = array_values(
+		array_unique(
+			array_filter(
+				array_map(
+					static function ( $v ) {
+						return sanitize_text_field( (string) $v );
+					},
+					$selected
+				),
+				static function ( $v ) {
+					return $v !== '';
+				}
+			)
+		)
+	);
+
+	$options = [
+		'1'     => '1 Zimmer',
+		'1.5'   => '1,5 Zimmer',
+		'2'     => '2 Zimmer',
+		'2.5'   => '2,5 Zimmer',
+		'3'     => '3 Zimmer',
+		'3.5'   => '3,5 Zimmer',
+		'4'     => '4 Zimmer',
+		'4.5'   => '4,5 Zimmer',
+		'5plus' => '5+ Zimmer',
+	];
+
+	echo '<fieldset class="immomakler-search-range immomakler-search-rooms col-xs-12 col-sm-4">';
+	echo '<div class="immomakler-search-range-text"><span class="range-label">' . esc_html__( 'Zimmer', 'immomakler' ) . ':</span></div>';
+	echo '<select class="selectpicker form-control" name="zimmer_multi[]" multiple data-width="100%" data-actions-box="true" data-selected-text-format="count > 1" title="' . esc_attr__( 'Zimmer auswählen', 'immomakler' ) . '">';
+	foreach ( $options as $value => $label ) {
+		$is_selected = in_array( (string) $value, $selected, true ) ? ' selected' : '';
+		echo '<option value="' . esc_attr( (string) $value ) . '"' . $is_selected . '>' . esc_html( $label ) . '</option>';
+	}
+	echo '</select>';
+	echo '</fieldset>';
+}, 20 );
 
 /* ------------------------------------------------------------
  * Fix NaN on Pauschalmiete slider when DB has no data / cached max values
@@ -681,6 +706,62 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 					],
 				],
 			];
+		}
+	}
+
+	/**
+	 * Zimmer dropdown (multi-select):
+	 * - Uses GET/POST param `zimmer_multi[]`
+	 * - Filters meta_key `anzahl_zimmer` (plugin default for rooms)
+	 */
+	$zimmer_multi = [];
+	if ( isset( $_GET['zimmer_multi'] ) ) {
+		$zimmer_multi = (array) wp_unslash( $_GET['zimmer_multi'] );
+	} elseif ( isset( $_POST['zimmer_multi'] ) ) {
+		$zimmer_multi = (array) wp_unslash( $_POST['zimmer_multi'] );
+	}
+	$zimmer_multi = array_values(
+		array_unique(
+			array_filter(
+				array_map(
+					static function ( $v ) {
+						return sanitize_text_field( (string) $v );
+					},
+					$zimmer_multi
+				),
+				static function ( $v ) {
+					return $v !== '';
+				}
+			)
+		)
+	);
+
+	if ( ! empty( $zimmer_multi ) ) {
+		$or = [ 'relation' => 'OR' ];
+		foreach ( $zimmer_multi as $v ) {
+			if ( $v === '5plus' ) {
+				$or[] = [
+					'key'     => 'anzahl_zimmer',
+					'value'   => 5,
+					'type'    => 'NUMERIC',
+					'compare' => '>=',
+				];
+				continue;
+			}
+
+			$num = (float) str_replace( ',', '.', (string) $v );
+			if ( $num <= 0 ) {
+				continue;
+			}
+			$or[] = [
+				'key'     => 'anzahl_zimmer',
+				'value'   => $num,
+				'type'    => 'NUMERIC',
+				'compare' => '=',
+			];
+		}
+		if ( count( $or ) > 1 ) {
+			$meta_query[] = $or;
 		}
 	}
 
