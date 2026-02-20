@@ -145,7 +145,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	min-width: 0;
 }
 .post-type-archive-immomakler_object .immomakler .woonwoon-filter-bezirk {
-	grid-column: 1 / -1;
+	grid-column: auto;
 }
 .post-type-archive-immomakler_object .immomakler .woonwoon-filter-field .range-label {
 	display: block;
@@ -246,8 +246,25 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	content: "\2611"; /* ☑ */
 }
 
+/* Dropdown option layout: checkbox left, label right, no jumping */
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a {
+	display: flex;
+	align-items: center;
+}
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a .check-mark {
+	flex: 0 0 1.25em;
+	width: 1.25em;
+	margin-right: 8px;
+	text-align: center;
+}
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a .text {
+	flex: 1 1 auto;
+}
+
 @media (max-width: 1024px) {
-	/* no-op: grid handles wrapping */
+	.post-type-archive-immomakler_object .immomakler .search-ranges.row {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 @media (max-width: 767px) {
 	.immomakler-archive .property-container.immomakler-archive-item-layout-condensed .property-title{
