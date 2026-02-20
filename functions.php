@@ -17,6 +17,37 @@
  * UI tweaks
  * ------------------------------------------------------------ */
 
+// Archive search UX:
+// - keep filters always visible (no collapse / "mehr Optionen")
+// - we implement our own debounced autosubmit (JS) to avoid double submits / jitter while dragging sliders
+add_filter( 'immomakler_search_hide_advanced', '__return_false' );
+add_filter( 'immomakler_searchform_autosubmit_on_change_rangesliders', '__return_false' );
+
+add_action( 'wp_enqueue_scripts', function () {
+	if ( is_admin() ) {
+		return;
+	}
+
+	$is_archive = false;
+	if ( function_exists( 'is_immomakler_archive' ) ) {
+		$is_archive = (bool) is_immomakler_archive();
+	} elseif ( function_exists( 'is_post_type_archive' ) ) {
+		$is_archive = (bool) is_post_type_archive( 'immomakler_object' );
+	}
+
+	if ( ! $is_archive ) {
+		return;
+	}
+
+	wp_enqueue_script(
+		'woonwoon-immomakler-filter-ux',
+		plugins_url( 'js/woonwoon-immomakler-filter-ux.js', __FILE__ ),
+		[ 'jquery' ],
+		'2026-02-20.1',
+		true
+	);
+}, 20 );
+
 // Archive subtitle
 add_filter( 'immomakler_archive_subheadline', function ( $title ) {
 	return 'Appartments';

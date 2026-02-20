@@ -75,44 +75,107 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	display: none !important;
 }
 
-/* Advanced search: filters first, then action buttons (reverse DOM order) */
+/* Archive search UX (filter panel) */
+
+/* Keep action buttons in expected order (top), filters below */
 #immomakler-search-advanced {
 	display: flex;
-	flex-direction: column-reverse;
+	flex-direction: column;
 }
 #immomakler-search-advanced .panel-heading {
 	margin-bottom: 0;
 }
 
-/* Filters row (desktop inline, mobile stacked) */
-.immomakler .search-ranges.row {
-	display: flex;
-	flex-wrap: nowrap;
-	gap: 16px;
+/* Filter panel look (subtle "card") */
+.post-type-archive-immomakler_object .immomakler #immomakler-search-advanced.panel-default {
+	background: #fff;
+	border: 1px solid rgba(15, 23, 42, 0.12);
+	border-radius: 12px;
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+	overflow: hidden;
 }
-.immomakler .search-ranges.row > .immomakler-search-range,
-.immomakler .search-ranges.row > .immomakler-search-regionaler-zusatz {
-	flex: 1 1 0;
-	min-width: 220px;
-	max-width: none;
+.post-type-archive-immomakler_object .immomakler #immomakler-search-advanced.panel-default > .panel-heading {
+	background: transparent;
+	border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+	padding: 12px;
+	margin: 0;
 }
-.immomakler .search-ranges.row .range-label {
-	display: block;
+.post-type-archive-immomakler_object .immomakler #immomakler-search-advanced .panel-body {
+	padding: 12px;
 }
-@media (max-width: 1024px) {
-	.immomakler .search-ranges.row {
-		flex-wrap: wrap;
-	}
+
+/* Action row: tighter, responsive layout */
+.post-type-archive-immomakler_object .immomakler #immomakler-search-advanced .search-actions.row {
+	margin-left: 0;
+	margin-right: 0;
+	display: grid;
+	grid-template-columns: 1fr auto auto;
+	gap: 10px;
+	align-items: center;
 }
 @media (max-width: 767px) {
-	.immomakler .search-ranges.row {
-		flex-wrap: wrap;
+	.post-type-archive-immomakler_object .immomakler #immomakler-search-advanced .search-actions.row {
+		grid-template-columns: 1fr;
 	}
-	.immomakler .search-ranges.row > .immomakler-search-range,
-	.immomakler .search-ranges.row > .immomakler-search-regionaler-zusatz {
-		flex: 0 0 100%;
-		max-width: 100%;
-	}
+}
+
+/* Filters: responsive grid (more stable than flex) */
+.immomakler .search-ranges.row {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 12px;
+	margin-left: 0;
+	margin-right: 0;
+}
+
+/* Each slider filter as its own card */
+.post-type-archive-immomakler_object .immomakler fieldset.immomakler-search-range {
+	border: 1px solid rgba(15, 23, 42, 0.10);
+	border-radius: 10px;
+	background: #fff;
+	padding: 12px;
+	margin: 0;
+}
+
+/* Label/value: better hierarchy */
+.post-type-archive-immomakler_object .immomakler .immomakler-search-range-text {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+	align-items: baseline;
+	margin: 0 0 10px;
+}
+.post-type-archive-immomakler_object .immomakler .range-label {
+	font-weight: 600;
+	display: inline;
+}
+.post-type-archive-immomakler_object .immomakler .range-value {
+	font-variant-numeric: tabular-nums;
+	background: #f1f5f9;
+	padding: 2px 8px;
+	border-radius: 999px;
+}
+
+/* Slider: brand color + touch friendly handles */
+.post-type-archive-immomakler_object .immomakler .noUi-connect {
+	background: #445D83;
+}
+.post-type-archive-immomakler_object .immomakler .noUi-horizontal {
+	height: 7px;
+}
+.post-type-archive-immomakler_object .immomakler .noUi-horizontal .noUi-handle {
+	width: 22px;
+	height: 22px;
+	top: -8px;
+	border: 2px solid #445D83;
+	border-radius: 999px;
+}
+.post-type-archive-immomakler_object .immomakler .noUi-handle:focus-visible {
+	outline: 3px solid rgba(68, 93, 131, 0.35);
+	outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
 	.immomakler-archive .property-container.immomakler-archive-item-layout-condensed .property-title{
 		font-size: inherit;
 	}
