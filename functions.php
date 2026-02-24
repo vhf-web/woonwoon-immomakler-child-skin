@@ -1280,3 +1280,146 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 
 	$query->set( 'meta_query', $meta_query );
 }
+
+/* ------------------------------------------------------------
+ * Shortcode: Region apartments (max N cards, same as archive)
+ * ------------------------------------------------------------
+ * Usage: [woonwoon_region_apartments region="Schöneberg"]
+ *        [woonwoon_region_apartments region="Kreuzberg" limit="6" columns="2"]
+ */
+
+add_action( 'init', function () {
+	add_shortcode( 'woonwoon_region_apartments', 'woonwoon_shortcode_region_apartments' );
+} );
+
+/**
+ * Shortcode callback: list property cards for a region (Bezirk/Ortsteil), only Wohnung, same layout as archive.
+ *
+ * @param array<string,string> $atts Shortcode attributes: region (required), limit (default 4), columns (default from theme).
+ * @return string HTML output.
+ */
+function woonwoon_shortcode_region_apartments( $atts = [] ): string {
+	$atts = shortcode_atts(
+		[
+			'region'  => '',
+			'limit'   => '4',
+			'columns' => '0',
+		],
+		$atts,
+		'woonwoon_region_apartments'
+	);
+
+	$region = trim( (string) $atts['region'] );
+	if ( $region === '' ) {
+		return '';
+	}
+
+	$limit = absint( $atts['limit'] );
+	if ( $limit < 1 ) {
+		$limit = 4;
+	}
+
+	// Tax: only Wohnung (same as archive).
+	$taxonomy = apply_filters( 'immomakler_property_type_taxonomy', 'immomakler_object_type' );
+	$wohnung_slug = 'wohnung';
+	if ( class_exists( '\ImmoMakler\Helpers\I18n_Helper' ) ) {
+		$wohnung_slug = \ImmoMakler\Helpers\I18n_Helper::generate_i18n_term_slug( 'Wohnung' );
+	} elseif ( function_exists( 'sanitize_title' ) ) {
+		$wohnung_slug = sanitize_title( 'Wohnung' );
+	}
+
+	$tax_query = [
+		[
+			'taxonomy'         => $taxonomy,
+			'field'            => 'slug',
+			'terms'            => [ $wohnung_slug ],
+			'include_children' => true,
+			'operator'         => 'IN',
+		],
+	];
+
+	// Meta: regionaler_zusatz_clean or regionaler_zusatz LIKE.
+	$meta_query = [
+		'relation' => 'OR',
+		[
+			'key'     => 'regionaler_zusatz_clean',
+			'value'   => $region,
+			'compare' => '=',
+		],
+		[
+			'key'     => 'regionaler_zusatz',
+			'value'   => $region,
+			'compare' => 'LIKE',
+		],
+	];
+
+	$query_args = [
+		'post_type'      => 'immomakler_object',
+		'post_status'    => 'publish',
+		'posts_per_page' => $limit,
+		'no_found_rows'  => true,
+		'tax_query'      => $tax_query,
+		'meta_query'      => $meta_query,
+	];
+
+	$query = new WP_Query( $query_args );
+
+	if ( ! $query->have_posts() ) {
+		wp_reset_postdata();
+		return '';
+	}
+
+	$columns = (int) $atts['columns'];
+	if ( $columns < 1 ) {
+		$columns = function_exists( 'immomakler_number_of_columns' ) ? immomakler_number_of_columns( 'archive' ) : 3;
+	}
+	if ( $columns < 1 ) {
+		$columns = 3;
+	}
+
+	$boxed = false;
+	if ( class_exists( 'ImmoMakler_Options' ) ) {
+		$boxed = (bool) ImmoMakler_Options::get( 'archive_container_boxed_enabled' );
+	}
+
+	ob_start();
+	add_filter( 'immomakler_is_immomakler_archive', '__return_true' );
+
+	echo '<div class="immomakler-archive immomakler immomakler-shortcode-archive woonwoon-region-apartments">';
+	echo '<div class="properties">';
+
+	$i = 0;
+	while ( $query->have_posts() ) {
+		$query->the_post();
+		++$i;
+		if ( $columns === 1 || ( $i % $columns === 1 ) ) {
+			echo '<div class="row' . ( $boxed ? ' immomakler-boxed' : '' ) . '">';
+		}
+		$col_class = $columns > 1 ? ' col-md-' . ( 12 / $columns ) : '';
+		if ( $columns > 1 && function_exists( 'immomakler_skin_bootstrap3_is_vertical_layout' ) && immomakler_skin_bootstrap3_is_vertical_layout() ) {
+			$col_class .= ' col-sm-6';
+		}
+		echo '<div class="property' . esc_attr( $col_class ) . '">';
+		if ( class_exists( '\ImmoMakler\Data\Property_Helper' ) && \ImmoMakler\Data\Property_Helper::is_reference() ) {
+			immomakler_get_template_part( 'archive/item', 'property-reference' );
+		} elseif ( get_post_meta( get_the_ID(), 'is_master', true ) ) {
+			immomakler_get_template_part( 'archive/item', 'project' );
+		} else {
+			immomakler_get_template_part( 'archive/item', 'property' );
+		}
+		echo '</div>';
+		if ( $columns === 1 || ( $i % $columns === 0 ) ) {
+			echo '</div>';
+		}
+	}
+	if ( $columns > 1 && ( $i % $columns > 0 ) ) {
+		echo '</div>';
+	}
+
+	echo '</div></div>';
+
+	remove_filter( 'immomakler_is_immomakler_archive', '__return_true' );
+	wp_reset_postdata();
+
+	return ob_get_clean();
+}
