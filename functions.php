@@ -1299,6 +1299,11 @@ add_action( 'init', function () {
  * @return string HTML output.
  */
 function woonwoon_shortcode_region_apartments( $atts = [] ): string {
+	// Require plugin template function to avoid fatal (502).
+	if ( ! function_exists( 'immomakler_get_template_part' ) ) {
+		return '';
+	}
+
 	$atts = shortcode_atts(
 		[
 			'region'  => '',
@@ -1382,44 +1387,52 @@ function woonwoon_shortcode_region_apartments( $atts = [] ): string {
 		$boxed = (bool) ImmoMakler_Options::get( 'archive_container_boxed_enabled' );
 	}
 
-	ob_start();
-	add_filter( 'immomakler_is_immomakler_archive', '__return_true' );
+	try {
+		ob_start();
+		add_filter( 'immomakler_is_immomakler_archive', '__return_true' );
 
-	echo '<div class="immomakler-archive immomakler immomakler-shortcode-archive woonwoon-region-apartments">';
-	echo '<div class="properties">';
+		echo '<div class="immomakler-archive immomakler immomakler-shortcode-archive woonwoon-region-apartments">';
+		echo '<div class="properties">';
 
-	$i = 0;
-	while ( $query->have_posts() ) {
-		$query->the_post();
-		++$i;
-		if ( $columns === 1 || ( $i % $columns === 1 ) ) {
-			echo '<div class="row' . ( $boxed ? ' immomakler-boxed' : '' ) . '">';
+		$i = 0;
+		while ( $query->have_posts() ) {
+			$query->the_post();
+			++$i;
+			if ( $columns === 1 || ( $i % $columns === 1 ) ) {
+				echo '<div class="row' . ( $boxed ? ' immomakler-boxed' : '' ) . '">';
+			}
+			$col_class = $columns > 1 ? ' col-md-' . ( 12 / $columns ) : '';
+			if ( $columns > 1 && function_exists( 'immomakler_skin_bootstrap3_is_vertical_layout' ) && immomakler_skin_bootstrap3_is_vertical_layout() ) {
+				$col_class .= ' col-sm-6';
+			}
+			echo '<div class="property' . esc_attr( $col_class ) . '">';
+			if ( class_exists( '\ImmoMakler\Data\Property_Helper' ) && \ImmoMakler\Data\Property_Helper::is_reference() ) {
+				immomakler_get_template_part( 'archive/item', 'property-reference' );
+			} elseif ( get_post_meta( get_the_ID(), 'is_master', true ) ) {
+				immomakler_get_template_part( 'archive/item', 'project' );
+			} else {
+				immomakler_get_template_part( 'archive/item', 'property' );
+			}
+			echo '</div>';
+			if ( $columns === 1 || ( $i % $columns === 0 ) ) {
+				echo '</div>';
+			}
 		}
-		$col_class = $columns > 1 ? ' col-md-' . ( 12 / $columns ) : '';
-		if ( $columns > 1 && function_exists( 'immomakler_skin_bootstrap3_is_vertical_layout' ) && immomakler_skin_bootstrap3_is_vertical_layout() ) {
-			$col_class .= ' col-sm-6';
-		}
-		echo '<div class="property' . esc_attr( $col_class ) . '">';
-		if ( class_exists( '\ImmoMakler\Data\Property_Helper' ) && \ImmoMakler\Data\Property_Helper::is_reference() ) {
-			immomakler_get_template_part( 'archive/item', 'property-reference' );
-		} elseif ( get_post_meta( get_the_ID(), 'is_master', true ) ) {
-			immomakler_get_template_part( 'archive/item', 'project' );
-		} else {
-			immomakler_get_template_part( 'archive/item', 'property' );
-		}
-		echo '</div>';
-		if ( $columns === 1 || ( $i % $columns === 0 ) ) {
+		if ( $columns > 1 && ( $i % $columns > 0 ) ) {
 			echo '</div>';
 		}
+
+		echo '</div></div>';
+
+		remove_filter( 'immomakler_is_immomakler_archive', '__return_true' );
+		return ob_get_clean();
+	} catch ( Exception $e ) {
+		remove_filter( 'immomakler_is_immomakler_archive', '__return_true' );
+		if ( ob_get_length() ) {
+			ob_end_clean();
+		}
+		return '';
+	} finally {
+		wp_reset_postdata();
 	}
-	if ( $columns > 1 && ( $i % $columns > 0 ) ) {
-		echo '</div>';
-	}
-
-	echo '</div></div>';
-
-	remove_filter( 'immomakler_is_immomakler_archive', '__return_true' );
-	wp_reset_postdata();
-
-	return ob_get_clean();
 }
