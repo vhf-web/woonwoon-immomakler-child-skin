@@ -1,3 +1,506 @@
 /* Eigene CSS-Angaben für WP-ImmoMakler.
 Wird nach dem mitgelieferten Plugin-CSS geladen,
 Sie können somit die CSS-Angaben überschreiben oder ergänzen */
+
+/* ==========================================================================
+   TYPOGRAFIE (Elementor Global Styles)
+   ========================================================================== */
+
+/* Archive / Listenansicht + Detailseiten: Einheitliche Typografie Montserrat */
+.post-type-archive-immomakler_object .immomakler,
+.post-type-archive-immomakler_object .immomakler * ,
+.single-immomakler_object .immomakler,
+.single-immomakler_object .immomakler * {
+	font-family: "Montserrat", sans-serif;
+}
+
+/* Detailseite (immobilien/*): Property Title wie "Primary" + Primärfarbe */
+.single-immomakler_object .immomakler-single-title,
+.single-immomakler_object .immomakler-property-title,
+.single-immomakler_object .immomakler-single h1,
+.single-immomakler_object .immomakler h1 {
+	font-family: var(--e-global-typography-primary-font-family, inherit), Sans-serif;
+	font-size: var(--e-global-typography-primary-font-size, inherit);
+	font-weight: var(--e-global-typography-primary-font-weight, inherit);
+	text-transform: var(--e-global-typography-primary-text-transform, none);
+	line-height: var(--e-global-typography-primary-line-height, normal);
+	letter-spacing: var(--e-global-typography-primary-letter-spacing, normal);
+	word-spacing: var(--e-global-typography-primary-word-spacing, normal);
+	color: var(--e-global-color-primary, inherit);
+}
+
+/* Abstand oben/unten für die gesamte Archivansicht */
+.post-type-archive-immomakler_object .immomakler {
+	padding-bottom: 40px;
+}
+
+/* Optional: Content nicht ganz auf volle Breite */
+.post-type-archive-immomakler_object .immomakler-archive,
+.post-type-archive-immomakler_object .immomakler ,
+.immomakler-single.immomakler{
+  margin-top: 2em;
+}
+
+.post-type-archive-immomakler_object .immomakler.immomakler-map{
+	margin-top: 0 !important;
+	padding-top: 0 !important;
+}
+/* Archive: map at top without spacing */
+.post-type-archive-immomakler_object .immomakler .archive-map,
+.post-type-archive-immomakler_object .immomakler .immomakler-map,
+.post-type-archive-immomakler_object .immomakler iframe.immomakler-map-iframe,
+.post-type-archive-immomakler_object .immomakler .immomakler-map-iframe{
+	margin-top: 0 !important;
+	padding-top: 0 !important;
+}
+
+.post-type-archive-immomakler_object .immomakler .archive-title{
+	text-transform: uppercase;
+}
+
+/* Titel-Abstände */
+.post-type-archive-immomakler_object .archive-title { margin: 0 0 10px; }
+.post-type-archive-immomakler_object .archive-subtitle{
+	display:none;
+   }
+
+/* Archive search: hide Suchagenten panel */
+#immomakler-search-agents-panel,
+.immomakler [id$="immomakler-search-agents-panel"] {
+	display: none !important;
+}
+
+/* Hide taxonomy row (no "Alle Orte" dropdown) */
+.immomakler .search-taxonomies.row {
+	display: none !important;
+}
+
+/* ======================================================================
+   Archive filter bar redesign
+   ====================================================================== */
+
+/* Module container */
+.post-type-archive-immomakler_object .immomakler [id$="immomakler-search-advanced"].panel-default {
+	background: #fff;
+	border: 1px solid rgba(15, 23, 42, 0.12);
+	border-radius: 12px;
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+	padding: 12px;
+	position: relative;
+}
+
+/* Reorder: header (wishlist) -> filters -> CTA row */
+.post-type-archive-immomakler_object .immomakler [id$="immomakler-search-advanced"] {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.post-type-archive-immomakler_object .immomakler [id$="immomakler-search-advanced"] > .woonwoon-filter-header { order: 0; }
+.post-type-archive-immomakler_object .immomakler [id$="immomakler-search-advanced"] > .panel-collapse { order: 1; }
+.post-type-archive-immomakler_object .immomakler [id$="immomakler-search-advanced"] > .panel-heading { order: 2; }
+
+/* Header (wishlist top-right) */
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-header {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-header .woonwoon-wishlist {
+	background: transparent;
+	border: 1px solid rgba(15, 23, 42, 0.12);
+	border-radius: 10px;
+	padding: 8px 10px;
+	color: rgba(15, 23, 42, 0.9);
+}
+
+/* Filters grid */
+.post-type-archive-immomakler_object .immomakler .panel-collapse {
+	border: 0;
+}
+.post-type-archive-immomakler_object .immomakler .panel-body {
+	padding: 0;
+}
+.post-type-archive-immomakler_object .immomakler .search-ranges.row {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12px;
+	margin: 0;
+}
+.post-type-archive-immomakler_object .immomakler .search-ranges.row:before{
+	content: "";
+	display: none;
+}
+@media (max-width: 767px) {
+	.post-type-archive-immomakler_object .immomakler .search-ranges.row {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Fields */
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-field {
+	border: 1px solid rgba(15, 23, 42, 0.10);
+	border-radius: 10px;
+	padding: 10px;
+	margin: 0;
+	min-width: 0;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-bezirk {
+	grid-column: auto;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-field .range-label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-minmax {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-field .form-control {
+	height: 44px;
+	border-radius: 10px;
+	box-shadow: none;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-field .form-control:focus {
+	border-color: #445D83;
+	box-shadow: 0 0 0 3px rgba(68, 93, 131, 0.25);
+}
+.post-type-archive-immomakler_object .immomakler .immomakler-search-rooms .bootstrap-select {
+	width: 100% !important;
+}
+.post-type-archive-immomakler_object .immomakler .immomakler-search-rooms .bootstrap-select > .dropdown-toggle {
+	height: 44px;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-bezirk .bootstrap-select {
+	width: 100% !important;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-bezirk .bootstrap-select > .dropdown-toggle {
+	height: 44px;
+}
+
+/* Secondary actions (reset link) */
+.post-type-archive-immomakler_object .immomakler .woonwoon-filter-secondary {
+	display: flex;
+	justify-content: flex-end;
+	padding-top: 6px;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-reset-link {
+	color: rgba(15, 23, 42, 0.65);
+	text-decoration: underline;
+}
+.post-type-archive-immomakler_object .immomakler .woonwoon-reset-link:hover {
+	color: rgba(15, 23, 42, 0.85);
+}
+
+/* CTA row: only primary button, right-aligned */
+.post-type-archive-immomakler_object .immomakler [id$="immomakler-search-advanced"] > .panel-heading {
+	border: 0;
+	background: transparent;
+	padding: 0;
+	margin: 0;
+}
+.post-type-archive-immomakler_object .immomakler .search-actions.row {
+	margin: 0;
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+	align-items: center;
+}
+.post-type-archive-immomakler_object .immomakler .search-actions.row .woonwoon-reset-link {
+	color: rgba(15, 23, 42, 0.65);
+	text-decoration: underline;
+	padding: 0;
+	border: 0;
+	background: transparent;
+}
+.post-type-archive-immomakler_object .immomakler .search-actions.row .woonwoon-reset-link:hover {
+	color: rgba(15, 23, 42, 0.85);
+}
+.post-type-archive-immomakler_object .immomakler .immomakler-submit.btn.btn-primary {
+	min-height: 44px;
+	padding: 10px 16px;
+	border-radius: 10px;
+	background: #445D83;
+	border-color: #445D83;
+	font-weight: 600;
+}
+.post-type-archive-immomakler_object .immomakler .immomakler-submit .glyphicon {
+	display: none;
+}
+
+/* Hide the advanced toggle button (always visible filters) */
+.post-type-archive-immomakler_object .immomakler .immomakler-more-options {
+	display: none !important;
+}
+
+/* Rooms dropdown: show a "checkbox" icon for every option line */
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a .check-mark {
+	display: inline-block !important;
+	opacity: 0.25;
+}
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li.selected a .check-mark {
+	opacity: 1;
+    position: relative;
+    right: 0px;
+    top: 0px;
+}
+
+/* Dropdown checkbox icon: override global glyphicon hearts */
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a .check-mark.glyphicon-check:before {
+	content: "\2610"; /* ☐ */
+	font-size:20px;
+}
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li.selected a .check-mark.glyphicon-check:before {
+	content: "\2611"; /* ☑ */
+	font-size:20px;
+}
+
+/* Dropdown option layout: checkbox left, label right, no jumping */
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a {
+	display: flex;
+	align-items: center;
+}
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a .check-mark {
+	flex: 0 0 1.25em;
+	width: 1.25em;
+	margin-right: 8px;
+	text-align: center;
+}
+.post-type-archive-immomakler_object .immomakler .bootstrap-select .dropdown-menu li a .text {
+	flex: 1 1 auto;
+}
+
+@media (max-width: 1024px) {
+	.post-type-archive-immomakler_object .immomakler .search-ranges.row {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+@media (max-width: 767px) {
+	.immomakler-archive .property-container.immomakler-archive-item-layout-condensed .property-title{
+		font-size: inherit;
+	}
+	.immomakler-archive .property-container.immomakler-archive-item-layout-condensed.separated-price .property-data > .property-data-item.price:last-child{
+		line-height: 3.7em;
+	}
+}
+
+/* Child-skin OrderBy placement under titles */
+.post-type-archive-immomakler_object .immomakler-child-orderby {
+	margin: 10px 0 20px;
+	display: flex;
+	justify-content: flex-end;
+}
+.post-type-archive-immomakler_object .immomakler-child-orderby .immomakler-order-by {
+	display: inline-block;
+}
+
+/* ======================================================================
+   Single: property-details panel
+   ====================================================================== */
+
+.single-immomakler_object .property-details {
+	font-family: "Montserrat", sans-serif;
+}
+
+.single-immomakler_object  .panel-heading {
+	
+	border-bottom: 2px solid #000;
+	text-transform: uppercase;
+	background-color: transparent;
+}
+
+.single-immomakler_object  .panel-heading h2 {
+	margin: 0;
+}
+
+.single-immomakler_object .property-details .dt,
+.single-immomakler_object .property-details .dd {
+	font-family: "Montserrat", sans-serif;
+	font-weight: 400;
+	
+}
+.immomakler .checkbox label, .immomakler .radio label{
+	list-style: inherit;
+}
+
+/* Single: mobile responsive details list */
+@media (max-width: 767px) {
+	/* Requested mobile spacing */
+	.single-immomakler_object .immomakler-single.immomakler{
+		margin: 4em 1.5em 0;
+	}
+	.post-type-archive-immomakler_object .immomakler-archive{
+		margin: 0 1.5em 0;
+	}
+	.post-type-archive-immomakler_object #immomakler-search-advanced{
+		padding:0px;
+		margin-top:0px;
+	}
+
+	.single-immomakler_object .property-actions.btn-group .btn{
+		padding:7px;
+	}
+	.single-immomakler_object .immomakler-single .property-navigation{
+		float:left;
+		margin:0px 0px 0px 10px;	
+		
+	}
+	.single-immomakler_objec .immomakler .panel-body{
+		padding: 0px;
+	}
+	.single-immomakler_object .property-gallery-static-with-thumbs{
+		margin-top: 2em;
+	}
+	/* Keep label/value in two columns on phones */
+	.single-immomakler_object .property-details .list-group-item .row{
+		display: flex;
+		flex-wrap: nowrap;
+		align-items: flex-start;
+		margin-left: 0;
+		margin-right: 0;
+	}
+	.single-immomakler_object .property-details .dt,
+	.single-immomakler_object .property-details .dd{
+		padding-left: 0;
+		padding-right: 0;
+		font-size: 14px;
+		line-height: 1.35;
+	}
+	.single-immomakler_object .property-details .dt{
+		flex: 0 0 44%;
+		max-width: 44%;
+		padding-right: 10px;
+	}
+	.single-immomakler_object .property-details .dd{
+		flex: 1 1 56%;
+		max-width: 56%;
+	}
+	.single-immomakler_object .property-details .dd{
+		word-break: break-word;
+		overflow-wrap: anywhere;
+	}
+	.single-immomakler_object .property-details .list-group-item{
+		padding: 6px 5px;
+	}
+	.single-immomakler_object .immomakler-single .panel-heading h2{
+		font-size: 1.4rem;
+	}
+	.immomakler .panel-heading{
+		padding: 0px;
+	}
+}
+.single-immomakler_object .property-gallery-static-with-thumbs{
+	margin-top: 4em;
+}
+	
+
+
+/* ======================================================================
+   Single: property-actions buttons
+   ====================================================================== */
+
+   .single-immomakler_object .immomakler-single.immomakler{
+	margin-top:6em
+   }
+
+   .immomakler-single h2.property-subtitle{
+	margin-bottom: 2em;
+   }
+ 
+
+.single-immomakler_object .property-actions.btn-group .btn {
+	background-color: rgba(255, 255, 255, 0);
+	border-color: #000;
+	border-style: solid;
+	border-radius: 0;
+	box-shadow: none;
+	box-sizing: border-box;
+	color: #000;
+	fill: rgb(255, 255, 255);
+	cursor: pointer;
+	display: inline-block;
+	font-family: "Montserrat", sans-serif;
+	height: auto;
+	text-align: center;
+	margin-right: 11px;
+}
+
+/* Primary contact button: filled in primary color, text white */
+.single-immomakler_object .property-actions.btn-group .btn.btn-primary {
+	background-color: #445D83;
+	border-color: #445D83;
+	color: #ffffff;
+}
+
+
+.single-immomakler_object .property-contactform{
+	background-color:#EEE7D2;
+}
+
+.post-type-archive-immomakler_object .immomakler-archive,  .immomakler-single.immomakler{
+
+	    margin-top: 0px;
+		padding-bottom:0px;
+}
+/* ======================================================================
+   Panels
+   ====================================================================== */
+
+.immomakler .panel-default {
+	border: none;
+}
+
+.immomakler .panel-default>.panel-heading {
+	border-bottom: 2px solid #000;
+	background: transparent;
+	margin-bottom: 20px;
+}
+
+.immomakler-single .panel-heading h2 {
+	font-size: 2rem;
+	padding: 0;
+	font-weight: 400;
+	text-transform: uppercase;
+}
+.immomakler label{
+	font-weight:400;
+}
+
+/* ======================================================================
+   Icons (Glyphicons): use Unicode so they work without Bootstrap 3 icon font
+   ====================================================================== */
+
+.immomakler .glyphicon-list:before {
+	content: "\2630";
+}
+
+.immomakler .glyphicon-menu-left:before {
+	content: "\2039";
+}
+.immomakler .glyphicon-menu-right:before {
+	content: "\203A";
+}
+.immomakler .glyphicon-unchecked:before {
+	content: "\2661"; /* ♡ */
+}
+.immomakler .glyphicon-check:before {
+	content: "\2665"; /* ♥ */
+}
+  
+  /* map marker */
+  .immomakler .glyphicon-map-marker:before {
+	content: none; /* 📍 */
+  }
+  
+  /* lock */
+  .immomakler .glyphicon-lock:before {
+	content: "\1F512"; /* 🔒 */
+  }
+  .immomakler .glyphicon-search:before {
+  content: "\003F"; /* ? */
+}
+
+.immomakler .glyphicon-search:before {
+  content: "\2315"; /* ⌕ */
+}
