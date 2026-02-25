@@ -1190,6 +1190,15 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	} elseif ( isset( $_POST['zimmer_multi'] ) ) {
 		$zimmer_multi = (array) wp_unslash( $_POST['zimmer_multi'] );
 	}
+	// Also allow passing zimmer_multi via WP_Query args (e.g. from shortcodes).
+	if ( empty( $zimmer_multi ) ) {
+		$zimmer_from_query = $query->get( 'zimmer_multi' );
+		if ( is_string( $zimmer_from_query ) && $zimmer_from_query !== '' ) {
+			$zimmer_multi = explode( ',', $zimmer_from_query );
+		} elseif ( is_array( $zimmer_from_query ) ) {
+			$zimmer_multi = $zimmer_from_query;
+		}
+	}
 	$zimmer_multi = array_values(
 		array_unique(
 			array_filter(
@@ -1323,6 +1332,82 @@ function woonwoon_shortcode_region_apartments( $atts = [] ): string {
 
 	// Delegate to plugin shortcode; pre_get_posts adds Wohnung filter to its query.
 	$sc = '[immomakler-archive meta_key="regionaler_zusatz_clean" meta_value="' . esc_attr( $region ) . '" limit="' . $limit . '"';
+	if ( $atts['columns'] !== '' && absint( $atts['columns'] ) > 0 ) {
+		$sc .= ' columns="' . absint( $atts['columns'] ) . '"';
+	}
+	$sc .= ']';
+
+	return do_shortcode( $sc );
+}
+
+/* ------------------------------------------------------------
+ * Shortcode: Zimmer apartments (filter by room count)
+ * ------------------------------------------------------------
+ * Delegates to [immomakler-archive]; wohnung-only + room filter is applied
+ * by woonwoon_search_pre_get_posts when the plugin runs its query.
+ *
+ * Usage examples:
+ *   [woonwoon_zimmer_apartments zimmer="1" limit="4"]
+ *   [woonwoon_zimmer_apartments zimmer="2,3" limit="4" columns="2"]
+ *   [woonwoon_zimmer_apartments zimmer="5plus" limit="4"]
+ */
+
+add_action( 'init', function () {
+	add_shortcode( 'woonwoon_zimmer_apartments', 'woonwoon_shortcode_zimmer_apartments' );
+} );
+
+/**
+ * Shortcode callback: output [immomakler-archive] filtered by room counts.
+ * Uses internal query var `zimmer_multi` which is interpreted by
+ * woonwoon_search_pre_get_posts (supports values like "1,2,5plus").
+ *
+ * @param array<string,string> $atts Shortcode attributes: zimmer (required), limit (default 4), columns (optional).
+ * @return string HTML output.
+ */
+function woonwoon_shortcode_zimmer_apartments( $atts = [] ): string {
+	$atts = shortcode_atts(
+		[
+			'zimmer'  => '',
+			'limit'   => '4',
+			'columns' => '',
+		],
+		$atts,
+		'woonwoon_zimmer_apartments'
+	);
+
+	$zimmer_raw = trim( (string) $atts['zimmer'] );
+	if ( $zimmer_raw === '' ) {
+		return '';
+	}
+
+	$parts = array_values(
+		array_unique(
+			array_filter(
+				array_map(
+					static function ( $v ) {
+						return sanitize_text_field( trim( (string) $v ) );
+					},
+					explode( ',', $zimmer_raw )
+				),
+				static function ( $v ) {
+					return $v !== '';
+				}
+			)
+		)
+	);
+
+	if ( empty( $parts ) ) {
+		return '';
+	}
+
+	$limit = absint( $atts['limit'] );
+	if ( $limit < 1 ) {
+		$limit = 4;
+	}
+
+	// Delegate to plugin shortcode; pre_get_posts adds Wohnung + zimmer_multi filter.
+	$zimmer_multi_value = implode( ',', $parts );
+	$sc                 = '[immomakler-archive limit="' . $limit . '" zimmer_multi="' . esc_attr( $zimmer_multi_value ) . '"';
 	if ( $atts['columns'] !== '' && absint( $atts['columns'] ) > 0 ) {
 		$sc .= ' columns="' . absint( $atts['columns'] ) . '"';
 	}
