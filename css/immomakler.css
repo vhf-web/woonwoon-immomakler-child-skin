@@ -74,7 +74,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 .immomakler .search-taxonomies.row {
 	display: none !important;
 }
-.immomakler.search-radius.row {
+.immomakler .search-radius.row {
 	display: none !important;
 }
 
