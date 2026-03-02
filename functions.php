@@ -1017,14 +1017,15 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	/**
 	 * Force Objektart = Wohnung (taxonomy `immomakler_object_type`).
 	 * This keeps the archive/listing limited to apartments only.
+	 *
+	 * IMPORTANT for TranslatePress:
+	 * We always use the real taxonomy term slug `wohnung` here, independent
+	 * of the current UI language. Using I18n_Helper would generate a slug
+	 * from the translated label (e.g. "Apartment" -> "apartment") on /en/,
+	 * which does not match the stored term slug and would result in 0 hits.
 	 */
-	$taxonomy = apply_filters( 'immomakler_property_type_taxonomy', 'immomakler_object_type' );
+	$taxonomy    = apply_filters( 'immomakler_property_type_taxonomy', 'immomakler_object_type' );
 	$wohnung_slug = 'wohnung';
-	if ( class_exists( '\ImmoMakler\Helpers\I18n_Helper' ) ) {
-		$wohnung_slug = \ImmoMakler\Helpers\I18n_Helper::generate_i18n_term_slug( 'Wohnung' );
-	} elseif ( function_exists( 'sanitize_title' ) ) {
-		$wohnung_slug = sanitize_title( 'Wohnung' );
-	}
 
 	$tax_query = $query->get( 'tax_query' );
 	if ( ! is_array( $tax_query ) ) {
