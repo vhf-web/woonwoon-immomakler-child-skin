@@ -78,6 +78,17 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	display:none;
    }
 
+/* Glyphicon file icon: ensure font is used (Bootstrap 3 Glyphicons Halflings) */
+.immomakler .glyphicon-file:before {
+	content: "\e022";
+	font-family: "Glyphicons Halflings", sans-serif;
+}
+
+/* Hide property status bar in archive/listing */
+.immomakler .property-status-bar {
+	display: none !important;
+}
+
 /* Archive search: hide Suchagenten panel */
 #immomakler-search-agents-panel,
 .immomakler [id$="immomakler-search-agents-panel"] {

@@ -28,6 +28,31 @@ add_filter( 'immomakler_search_button_text', function ( $text, $count ) {
 	return __( 'Ergebnisse anzeigen', 'immomakler-child-skin' );
 }, 20, 2 );
 
+/**
+ * English translations for child-skin search filter strings (no .po for child).
+ * When locale is English, translate so /en/ filter labels show in English.
+ */
+add_filter( 'gettext', function ( $translated, $text, $domain ) {
+	if ( $domain !== 'immomakler-child-skin' ) {
+		return $translated;
+	}
+	$is_english = ( strpos( get_locale(), 'en' ) === 0 );
+	if ( ! $is_english && function_exists( 'trp_get_current_language' ) ) {
+		$is_english = ( trp_get_current_language() === 'en' );
+	}
+	if ( ! $is_english ) {
+		return $translated;
+	}
+	$map = [
+		'Zimmer auswählen'   => 'Select rooms',
+		'Bezirk / Ortsteil'  => 'District / area',
+		'Bezirk wählen'      => 'Select district',
+		'{0} ausgewählt'     => '{0} selected',
+		'Ergebnisse anzeigen' => 'Show results',
+	];
+	return isset( $map[ $text ] ) ? $map[ $text ] : $translated;
+}, 10, 3 );
+
 // Enqueue small JS to rearrange buttons + init selectpicker after AJAX refresh.
 add_action( 'wp_enqueue_scripts', function () {
 	if ( is_admin() ) {
@@ -867,8 +892,8 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	];
 
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field immomakler-search-rooms">';
-	echo '<div class="range-label">' . esc_html__( 'Zimmer', 'immomakler-child-skin' ) . '</div>';
-	echo '<select class="selectpicker form-control" name="zimmer_multi[]" multiple data-width="100%" data-actions-box="false" data-selected-text-format="count > 1" data-count-selected-text="{0} ausgewählt" title="' . esc_attr__( 'Zimmer auswählen', 'immomakler-child-skin' ) . '">';
+	echo '<div class="range-label">' . esc_html__( 'Zimmer', 'immomakler' ) . '</div>';
+	echo '<select class="selectpicker form-control" name="zimmer_multi[]" multiple data-width="100%" data-actions-box="false" data-selected-text-format="count > 1" data-count-selected-text="' . esc_attr__( '{0} ausgewählt', 'immomakler-child-skin' ) . '" title="' . esc_attr__( 'Zimmer auswählen', 'immomakler-child-skin' ) . '">';
 	foreach ( $options as $value => $label ) {
 		$is_selected = in_array( (string) $value, $selected, true ) ? ' selected' : '';
 		$lbl = ( $value === '5plus' ) ? '5+' : $label;
@@ -879,19 +904,19 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 
 	// Area (m²) - second column
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-area">';
-	echo '<div class="range-label">' . esc_html__( 'Fläche (m²)', 'immomakler-child-skin' ) . '</div>';
+	echo '<div class="range-label">' . esc_html__( 'Fläche', 'immomakler' ) . ' (m²)</div>';
 	echo '<div class="woonwoon-minmax">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="von-qm" placeholder="' . esc_attr__( 'Min', 'immomakler-child-skin' ) . '" value="' . esc_attr( $qm_min ) . '">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="bis-qm" placeholder="' . esc_attr__( 'Max', 'immomakler-child-skin' ) . '" value="' . esc_attr( $qm_max ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="von-qm" placeholder="' . esc_attr__( 'Min', 'immomakler' ) . '" value="' . esc_attr( $qm_min ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="bis-qm" placeholder="' . esc_attr__( 'Max', 'immomakler' ) . '" value="' . esc_attr( $qm_max ) . '">';
 	echo '</div>';
 	echo '</fieldset>';
 
 	// Rent (EUR) - third column (pauschalmiete_numeric)
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-rent">';
-	echo '<div class="range-label">' . esc_html__( 'Miete', 'immomakler-child-skin' ) . ' (' . esc_html( $currency ) . ')</div>';
+	echo '<div class="range-label">' . esc_html__( 'Miete', 'immomakler' ) . ' (' . esc_html( $currency ) . ')</div>';
 	echo '<div class="woonwoon-minmax">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="von-pauschalmiete" placeholder="' . esc_attr__( 'Min', 'immomakler-child-skin' ) . '" value="' . esc_attr( $rent_min ) . '">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="bis-pauschalmiete" placeholder="' . esc_attr__( 'Max', 'immomakler-child-skin' ) . '" value="' . esc_attr( $rent_max ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="von-pauschalmiete" placeholder="' . esc_attr__( 'Min', 'immomakler' ) . '" value="' . esc_attr( $rent_min ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="bis-pauschalmiete" placeholder="' . esc_attr__( 'Max', 'immomakler' ) . '" value="' . esc_attr( $rent_max ) . '">';
 	echo '</div>';
 	echo '</fieldset>';
 
@@ -921,7 +946,7 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	$bezirk_options = woonwoon_get_regionaler_zusatz_options();
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-bezirk">';
 	echo '<div class="range-label">' . esc_html__( 'Bezirk / Ortsteil', 'immomakler-child-skin' ) . '</div>';
-	echo '<select class="selectpicker form-control" name="bezirk[]" multiple data-width="100%" data-actions-box="false" data-live-search="true" data-selected-text-format="count > 1" data-count-selected-text="{0} ausgewählt" title="' . esc_attr__( 'Bezirk wählen', 'immomakler-child-skin' ) . '">';
+	echo '<select class="selectpicker form-control" name="bezirk[]" multiple data-width="100%" data-actions-box="false" data-live-search="true" data-selected-text-format="count > 1" data-count-selected-text="' . esc_attr__( '{0} ausgewählt', 'immomakler-child-skin' ) . '" title="' . esc_attr__( 'Bezirk wählen', 'immomakler-child-skin' ) . '">';
 	foreach ( $bezirk_options as $v ) {
 		$is_selected = in_array( (string) $v, $bezirk_selected, true ) ? ' selected' : '';
 		echo '<option value="' . esc_attr( (string) $v ) . '"' . $is_selected . '>' . esc_html( (string) $v ) . '</option>';
