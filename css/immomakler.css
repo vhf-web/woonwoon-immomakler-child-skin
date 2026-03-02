@@ -34,6 +34,20 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	padding-bottom: 40px;
 }
 
+/* --------------------------------------------------------------------------
+   Objekt Single: No auto-translate for Objekt-ID and address/street
+   These elements get class "notranslate" and translate="no" in templates.
+   Selectors for translation plugins / exclusions:
+   - .property-details .data-objektnr_extern  (Objekt-ID)
+   - .property-details .data-adresse          (Adresse/Straße in Objektdaten)
+   - .property-subtitle                       (Adresse/Straße in der Kopfzeile)
+   -------------------------------------------------------------------------- */
+.single-immomakler_object .property-details .data-objektnr_extern,
+.single-immomakler_object .property-details .data-adresse,
+.single-immomakler_object .property-subtitle {
+	/* Marked in template with notranslate + translate="no" */
+}
+
 /* Optional: Content nicht ganz auf volle Breite */
 .post-type-archive-immomakler_object .immomakler-archive,
 .post-type-archive-immomakler_object .immomakler ,
@@ -443,7 +457,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 
 .post-type-archive-immomakler_object .immomakler-archive,  .immomakler-single.immomakler{
 
-	    margin-top: 0px;
+	    margin: 0px 2em;
 		padding-bottom:0px;
 }
 /* ======================================================================
