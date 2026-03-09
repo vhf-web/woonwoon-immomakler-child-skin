@@ -953,6 +953,21 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	}
 	echo '</select>';
 	echo '</fieldset>';
+
+	// Objekt-ID (property ID) field - integrates with core "objekt-id" search.
+	$objekt_id = '';
+	if ( isset( $_GET['objekt-id'] ) ) {
+		$objekt_id = sanitize_text_field( (string) wp_unslash( $_GET['objekt-id'] ) );
+	} elseif ( isset( $_POST['objekt-id'] ) ) {
+		$objekt_id = sanitize_text_field( (string) wp_unslash( $_POST['objekt-id'] ) );
+	}
+
+	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-objektid">';
+	echo '<div class="range-label">' . esc_html__( 'Objekt-ID', 'immomakler-child-skin' ) . '</div>';
+	echo '<div class="woonwoon-minmax">';
+	echo '<input class="form-control" type="text" name="objekt-id" placeholder="' . esc_attr__( 'Objekt-ID eingeben', 'immomakler-child-skin' ) . '" value="' . esc_attr( $objekt_id ) . '">';
+	echo '</div>';
+	echo '</fieldset>';
 }, 20 );
 
 /* ------------------------------------------------------------
