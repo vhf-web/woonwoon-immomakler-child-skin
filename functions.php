@@ -958,18 +958,18 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	echo '</select>';
 	echo '</fieldset>';
 
-	// Objekt-ID Suche, aber mit neutralem Label "Suche".
-	$objekt_id = '';
-	if ( isset( $_GET['objekt-id'] ) ) {
-		$objekt_id = sanitize_text_field( (string) wp_unslash( $_GET['objekt-id'] ) );
-	} elseif ( isset( $_POST['objekt-id'] ) ) {
-		$objekt_id = sanitize_text_field( (string) wp_unslash( $_POST['objekt-id'] ) );
+	// Freitext-Suche über mehrere Felder (Objekt-ID, Adresse, Bezirk, etc.)
+	$search_keyword = '';
+	if ( isset( $_GET['woonwoon_q'] ) ) {
+		$search_keyword = sanitize_text_field( (string) wp_unslash( $_GET['woonwoon_q'] ) );
+	} elseif ( isset( $_POST['woonwoon_q'] ) ) {
+		$search_keyword = sanitize_text_field( (string) wp_unslash( $_POST['woonwoon_q'] ) );
 	}
 
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-objektid">';
 	echo '<div class="range-label">' . esc_html__( 'Suche', 'immomakler-child-skin' ) . '</div>';
 	echo '<div class="woonwoon-minmax">';
-	echo '<input class="form-control" type="text" name="objekt-id" placeholder="' . esc_attr__( 'Objekt-ID eingeben', 'immomakler-child-skin' ) . '" value="' . esc_attr( $objekt_id ) . '">';
+	echo '<input class="form-control" type="text" name="woonwoon_q" placeholder="' . esc_attr__( 'ID, Adresse oder Merkmal eingeben', 'immomakler-child-skin' ) . '" value="' . esc_attr( $search_keyword ) . '">';
 	echo '</div>';
 	echo '</fieldset>';
 }, 20 );
@@ -1330,6 +1330,76 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 			];
 		}
 		$meta_query[] = $or_bezirk;
+	}
+
+	/**
+	 * Freitext-Suche:
+	 * - Uses GET/POST param `woonwoon_q`
+	 * - Matches:
+	 *   - Objekt-ID Felder (objektnr_extern_normalized, objektnr_extern, objektnr_intern) per RLIKE Prefix
+	 *   - Adresse / Bezirk (plz, regionaler_zusatz_clean, regionaler_zusatz) per LIKE
+	 *   - Gesamte immomakler_metadata (Fallback, kann langsamer sein – Datenbestand hier ist überschaubar)
+	 */
+	$keyword = $query->get( 'woonwoon_q' );
+	if ( $keyword === null || $keyword === '' ) {
+		if ( isset( $_GET['woonwoon_q'] ) ) {
+			$keyword = wp_unslash( $_GET['woonwoon_q'] );
+		} elseif ( isset( $_POST['woonwoon_q'] ) ) {
+			$keyword = wp_unslash( $_POST['woonwoon_q'] );
+		}
+	}
+	$keyword = is_string( $keyword ) ? trim( (string) $keyword ) : '';
+	$keyword = sanitize_text_field( $keyword );
+
+	if ( $keyword !== '' ) {
+		$or_search = [ 'relation' => 'OR' ];
+
+		// Objekt-ID Suche (ähnlich wie das Plugin, aber ohne Redirect).
+		if ( class_exists( '\ImmoMakler\Helpers\String_Helper' ) ) {
+			$normalized = \ImmoMakler\Helpers\String_Helper::normalize_objektnr_extern( $keyword );
+			$pattern    = apply_filters( 'immomakler_search_object_id_rlike', '^%s' );
+
+			if ( $normalized !== '' ) {
+				$or_search[] = [
+					'key'     => 'objektnr_extern_normalized',
+					'value'   => sprintf( $pattern, $normalized ),
+					'compare' => 'RLIKE',
+				];
+			}
+
+			// Fallback auf rohe Objekt-ID Felder.
+			$pattern_raw = sprintf( $pattern, $keyword );
+			$or_search[] = [
+				'key'     => apply_filters( 'immomakler_search_for_id_meta_key', 'objektnr_extern' ),
+				'value'   => $pattern_raw,
+				'compare' => 'RLIKE',
+			];
+			$or_search[] = [
+				'key'     => 'objektnr_intern',
+				'value'   => $pattern_raw,
+				'compare' => 'RLIKE',
+			];
+		}
+
+		// Adresse / Bezirk / sonstige Textfelder (LIKE).
+		foreach ( [ 'plz', 'regionaler_zusatz_clean', 'regionaler_zusatz' ] as $meta_key ) {
+			$or_search[] = [
+				'key'     => $meta_key,
+				'value'   => $keyword,
+				'compare' => 'LIKE',
+			];
+		}
+
+		// Fallback: gesamtes Metadata-Containerfeld durchsuchen.
+		$or_search[] = [
+			'key'     => 'immomakler_metadata',
+			'value'   => $keyword,
+			'compare' => 'LIKE',
+		];
+
+		if ( count( $or_search ) > 1 ) {
+			$meta_query[] = $or_search;
+		}
 	}
 
 	$query->set( 'meta_query', $meta_query );
