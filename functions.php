@@ -89,7 +89,7 @@ add_action( 'immomakler_search_taxonomies_row', function () {}, 5 );
 
 // Avoid redirecting directly to single object when searching by Objekt-ID.
 // This keeps the archive markup intact for AJAX search and prevents JS errors.
-//add_filter( 'immomakler_search_for_id_redirect_to_post', '__return_false' );
+add_filter( 'immomakler_search_for_id_redirect_to_post', '__return_false' );
 
 /* ------------------------------------------------------------
  * Single page: hide some data rows
