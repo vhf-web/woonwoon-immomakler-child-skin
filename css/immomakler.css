@@ -299,6 +299,33 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	flex: 1 1 auto;
 }
 
+/* Archive-Karten: Titel auf exakt 2 Zeilen einheitlich einfrieren.
+   -webkit-line-clamp kürzt Überlänge ab; die feste height (2 × line-height × font-size)
+   sorgt dafür, dass property-data bei allen Karten auf derselben Höhe beginnt. */
+.immomakler-archive .property-container.immomakler-archive-item-layout-condensed .property-title{
+	font-size: 1.2em;
+	margin-top: 0.3em;
+	line-height: 1.4;
+	height: calc(2 * 1.4 * 1.2em);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+/* Archive-Karten: Objekt-ID unter Pauschalmiete – eigene Zeile, klein, grau */
+.immomakler-archive .property-container.immomakler-archive-item-layout-condensed
+	.property-data .property-data-item.data-objektnr_extern{
+	display: block;
+	font-size: 0.75em;
+	color: #999;
+	margin-top: 0.3em;
+}
+.immomakler-archive .property-container.immomakler-archive-item-layout-condensed
+	.property-data .property-data-item.data-objektnr_extern::after{
+	content: "" !important;
+}
+
 @media (max-width: 1024px) {
 	.post-type-archive-immomakler_object .immomakler .search-ranges.row {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
