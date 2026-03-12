@@ -103,6 +103,25 @@ add_filter( 'immomakler_property_data_single_keys', function ( $keys, $post_id )
 	return array_values( array_diff( $keys, [ 'energietraeger', 'min_mietdauer', 'max_mietdauer' ] ) );
 }, 20, 2 );
 
+// Remove objektnr_extern from inline archive data items – it is rendered
+// separately below the price via the hook below.
+add_filter( 'immomakler_property_data_archive_keys', function ( $keys ) {
+	return array_values( array_diff( (array) $keys, [ 'objektnr_extern' ] ) );
+}, 20 );
+
+// Render Objekt-ID in grey/small font after price in archive cards.
+add_action( 'immomakler_archive_property_details_bottom', function () {
+	$post_id  = get_the_ID();
+	if ( ! $post_id ) {
+		return;
+	}
+	$objektnr = trim( (string) get_post_meta( $post_id, 'objektnr_extern', true ) );
+	if ( $objektnr === '' ) {
+		return;
+	}
+	echo '<div class="woonwoon-objektnr notranslate" translate="no">' . esc_html( $objektnr ) . '</div>';
+} );
+
 /* ------------------------------------------------------------
  * Single page: subtitle + "merken" label
  * ------------------------------------------------------------ */
@@ -145,7 +164,11 @@ add_filter( 'immomakler_property_subtitle', function ( $subtitle ) {
 	}
 
 	// Straße (ohne Hausnummer im Archiv).
-	$street = trim( (string) get_post_meta( $post_id, 'strasse', true ) );
+	// hide_street wird hier bewusst ignoriert – Straße soll im Archiv sichtbar sein.
+	$street = '';
+	if ( ! apply_filters( 'immomakler_hide_address', false ) ) {
+		$street = trim( (string) get_post_meta( $post_id, 'strasse', true ) );
+	}
 
 	$parts = [];
 	if ( $street !== '' ) {

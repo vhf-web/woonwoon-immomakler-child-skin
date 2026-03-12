@@ -313,17 +313,14 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	overflow: hidden;
 }
 
-/* Archive-Karten: Objekt-ID unter Pauschalmiete – eigene Zeile, klein, grau */
-.immomakler-archive .property-container.immomakler-archive-item-layout-condensed
-	.property-data .property-data-item.data-objektnr_extern{
+/* Archive-Karten: Objekt-ID unter Pauschalmiete – eigene Zeile, klein, grau.
+   Wird via PHP-Hook (immomakler_archive_property_details_bottom) ausgegeben,
+   nicht mehr als inline property-data-item. */
+.immomakler-archive .property-container.immomakler-archive-item-layout-condensed .woonwoon-objektnr {
 	display: block;
 	font-size: 0.75em;
 	color: #999;
-	margin-top: 0.3em;
-}
-.immomakler-archive .property-container.immomakler-archive-item-layout-condensed
-	.property-data .property-data-item.data-objektnr_extern::after{
-	content: "" !important;
+	margin-top: 0.35em;
 }
 
 @media (max-width: 1024px) {
