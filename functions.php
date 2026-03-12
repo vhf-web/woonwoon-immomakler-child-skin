@@ -119,7 +119,7 @@ add_action( 'immomakler_archive_property_details_bottom', function () {
 	if ( $objektnr === '' ) {
 		return;
 	}
-	echo '<div class="woonwoon-objektnr notranslate" translate="no">' . esc_html( $objektnr ) . '</div>';
+	echo '<div class="woonwoon-objektnr notranslate" translate="no">Objekt-ID: ' . esc_html( $objektnr ) . '</div>';
 } );
 
 /* ------------------------------------------------------------
