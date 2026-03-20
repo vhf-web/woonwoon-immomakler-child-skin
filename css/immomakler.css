@@ -479,10 +479,12 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 }
 
 /* Primary contact button: filled in primary color, text white */
-.single-immomakler_object .property-actions.btn-group .btn.btn-primary {
-	background-color: #445D83;
-	border-color: #445D83;
-	color: #ffffff;
+.single-immomakler_object .property-actions.btn-group .btn.btn-primary, .immomakler .btn-primary {
+	color: #fff;
+    background-color: #445D83;
+    border-color: #445D83;
+    text-transform: uppercase;
+    font-weight: 400 !important;
 }
 
 
@@ -490,7 +492,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 .single-immomakler_object .property-details-direktanfrage {
 	margin-top: 1.5em;
 	padding: 1em 0;
-	border-top: 1px solid #e0e0e0;
+	
 }
 .single-immomakler_object .property-details .btn-direktanfrage {
 	display: block;
