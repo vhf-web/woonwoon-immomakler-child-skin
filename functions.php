@@ -587,6 +587,17 @@ function woonwoon_mirror_from_immomakler_metadata( int $post_id, $meta_value = n
 		// Do not delete raw `regionaler_zusatz` to avoid fighting with plugin imports.
 		delete_post_meta( $post_id, 'regionaler_zusatz_clean' );
 	}
+
+	// Verfügbar ab (availability date or free text like "ab sofort") from container.
+	// Store all values for display; date search only filters when value is YYYY-MM-DD.
+	$va_raw = isset( $data['verfuegbar_ab'] ) ? (string) $data['verfuegbar_ab'] : '';
+	$va_raw = trim( $va_raw );
+	if ( $va_raw !== '' ) {
+		update_post_meta( $post_id, 'verfuegbar_ab', $va_raw );
+	} else {
+		delete_post_meta( $post_id, 'verfuegbar_ab' );
+	}
+
 	delete_transient( 'woonwoon_regionaler_zusatz_clean_options' );
 }
 
@@ -739,6 +750,48 @@ add_action( 'admin_init', function () {
 	}
 
 	delete_transient( 'woonwoon_regionaler_zusatz_clean_options' );
+} );
+
+/**
+ * Backfill `verfuegbar_ab` from the container meta (admin only).
+ * Uses a temporary meta key to avoid reprocessing objects that have no verfuegbar_ab in the container.
+ */
+add_action( 'admin_init', function () {
+	if ( get_option( 'woonwoon_verfuegbar_ab_from_container_migrated' ) ) {
+		return;
+	}
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$q = new WP_Query(
+		[
+			'post_type'      => 'immomakler_object',
+			'fields'         => 'ids',
+			'posts_per_page' => 200,
+			'no_found_rows'  => true,
+			'meta_query'     => [
+				[
+					'key'     => 'immomakler_metadata',
+					'compare' => 'EXISTS',
+				],
+				[
+					'key'     => '_woonwoon_verfuegbar_ab_migration_done',
+					'compare' => 'NOT EXISTS',
+				],
+			],
+		]
+	);
+
+	if ( empty( $q->posts ) ) {
+		update_option( 'woonwoon_verfuegbar_ab_from_container_migrated', 1 );
+		return;
+	}
+
+	foreach ( $q->posts as $pid ) {
+		woonwoon_mirror_from_immomakler_metadata( (int) $pid );
+		update_post_meta( (int) $pid, '_woonwoon_verfuegbar_ab_migration_done', '1' );
+	}
 } );
 
 /* ------------------------------------------------------------
@@ -983,6 +1036,21 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 		echo '<option value="' . esc_attr( (string) $v ) . '"' . $is_selected . '>' . esc_html( (string) $v ) . '</option>';
 	}
 	echo '</select>';
+	echo '</fieldset>';
+
+	// Verfügbar ab (availability date) – from immomakler_metadata.verfuegbar_ab (YYYY-MM-DD)
+	$verfuegbar_ab = '';
+	if ( isset( $_GET['verfuegbar_ab'] ) ) {
+		$verfuegbar_ab = sanitize_text_field( (string) wp_unslash( $_GET['verfuegbar_ab'] ) );
+	} elseif ( isset( $_POST['verfuegbar_ab'] ) ) {
+		$verfuegbar_ab = sanitize_text_field( (string) wp_unslash( $_POST['verfuegbar_ab'] ) );
+	}
+	if ( $verfuegbar_ab !== '' && ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $verfuegbar_ab ) ) {
+		$verfuegbar_ab = '';
+	}
+	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-verfuegbar-ab">';
+	echo '<div class="range-label">' . esc_html__( 'Verfügbar ab', 'immomakler-child-skin' ) . '</div>';
+	echo '<input class="form-control" type="date" name="verfuegbar_ab" value="' . esc_attr( $verfuegbar_ab ) . '">';
 	echo '</fieldset>';
 
 	// Freitext-Suche über mehrere Felder (Objekt-ID, Adresse, Bezirk, etc.)
@@ -1357,6 +1425,42 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 			];
 		}
 		$meta_query[] = $or_bezirk;
+	}
+
+	/**
+	 * Verfügbar ab (availability date):
+	 * - Uses GET/POST param `verfuegbar_ab` (YYYY-MM-DD)
+	 * - Filters meta_key `verfuegbar_ab` (mirrored from immomakler_metadata)
+	 * - Shows objects available from the selected date or later
+	 * - Includes text values: "ab sofort" (= from now), "bis Ende des Jahres" (= available until end of year)
+	 */
+	$verfuegbar_ab_val = $query->get( 'verfuegbar_ab' );
+	if ( $verfuegbar_ab_val === null || $verfuegbar_ab_val === '' ) {
+		$verfuegbar_ab_val = isset( $_GET['verfuegbar_ab'] ) ? trim( (string) wp_unslash( $_GET['verfuegbar_ab'] ) ) : '';
+	}
+	if ( $verfuegbar_ab_val === null || $verfuegbar_ab_val === '' ) {
+		$verfuegbar_ab_val = isset( $_POST['verfuegbar_ab'] ) ? trim( (string) wp_unslash( $_POST['verfuegbar_ab'] ) ) : '';
+	}
+	if ( $verfuegbar_ab_val !== '' && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $verfuegbar_ab_val ) ) {
+		$meta_query[] = [
+			'relation' => 'OR',
+			[
+				'key'     => 'verfuegbar_ab',
+				'value'   => $verfuegbar_ab_val,
+				'type'    => 'DATE',
+				'compare' => '>=',
+			],
+			[
+				'key'     => 'verfuegbar_ab',
+				'value'   => [ 'ab sofort', 'sofort' ],
+				'compare' => 'IN',
+			],
+			[
+				'key'     => 'verfuegbar_ab',
+				'value'   => 'bis Ende',
+				'compare' => 'LIKE',
+			],
+		];
 	}
 
 	/**
