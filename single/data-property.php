@@ -43,4 +43,9 @@ $property_data = new \ImmoMakler\Data\PropertyData();
 
 		<?php do_action( 'immomakler_single_details_end' ); ?>
 	</ul>
+	<?php if ( apply_filters( 'immomakler_show_contactform', true, get_the_ID() ) && ( has_term( __( 'offen', 'immomakler' ), 'immomakler_object_status', get_the_ID() ) || has_term( __( 'reserviert', 'immomakler' ), 'immomakler_object_status', get_the_ID() ) ) ) : ?>
+		<div class="property-details-direktanfrage">
+			<a href="#immomakler-contactform-panel" class="btn btn-primary btn-direktanfrage"><?php esc_html_e( 'Direktanfrage', 'immomakler' ); ?></a>
+		</div>
+	<?php endif; ?>
 </div> <!-- .property-details -->

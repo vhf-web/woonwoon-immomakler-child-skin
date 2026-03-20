@@ -486,6 +486,28 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 }
 
 
+/* Large Direktanfrage button at bottom of property-details */
+.single-immomakler_object .property-details-direktanfrage {
+	margin-top: 1.5em;
+	padding: 1em 0;
+	border-top: 1px solid #e0e0e0;
+}
+.single-immomakler_object .property-details .btn-direktanfrage {
+	display: block;
+	width: 100%;
+	padding: 1em 1.5em;
+	font-size: 1.25rem;
+	font-weight: 600;
+	text-align: center;
+	text-decoration: none;
+	border-radius: 0;
+}
+.single-immomakler_object .property-details .btn-direktanfrage:hover,
+.single-immomakler_object .property-details .btn-direktanfrage:focus {
+	text-decoration: none;
+	color: #fff;
+}
+
 .single-immomakler_object .property-contactform{
 	background-color:#EEE7D2;
 }
