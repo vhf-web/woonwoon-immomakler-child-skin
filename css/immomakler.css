@@ -488,11 +488,17 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 }
 
 
+/* Direktanfrage as last row inside Objektdaten list */
+.single-immomakler_object .property-details .property-details-direktanfrage-row {
+	border-top: 1px solid rgba(15, 23, 42, 0.08);
+	padding-top: 1em;
+	padding-bottom: 0.5em;
+}
+
 /* Large Direktanfrage button at bottom of property-details */
 .single-immomakler_object .property-details-direktanfrage {
-	margin-top: 1.5em;
-	padding: 1em 0;
-	
+	margin-top: 0;
+	padding: 0;
 }
 .single-immomakler_object .property-details .btn-direktanfrage {
 	display: block;

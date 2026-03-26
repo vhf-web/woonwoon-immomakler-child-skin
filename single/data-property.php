@@ -42,13 +42,16 @@ $property_data = new \ImmoMakler\Data\PropertyData();
 		<?php endforeach; ?>
 
 		<?php do_action( 'immomakler_single_details_end' ); ?>
+
+		<?php
+		// Slugs must stay 'offen' / 'reserviert' — __( 'offen' ) becomes e.g. "open" in English and breaks has_term().
+		if ( apply_filters( 'immomakler_show_contactform', true, get_the_ID() ) && ( has_term( 'offen', 'immomakler_object_status', get_the_ID() ) || has_term( 'reserviert', 'immomakler_object_status', get_the_ID() ) ) ) :
+			?>
+		<li class="list-group-item property-details-direktanfrage-row">
+			<div class="property-details-direktanfrage">
+				<a href="#immomakler-contactform-panel" class="btn btn-primary btn-direktanfrage"><?php esc_html_e( 'Direktanfrage', 'immomakler' ); ?></a>
+			</div>
+		</li>
+		<?php endif; ?>
 	</ul>
-	<?php
-	// Slugs must stay 'offen' / 'reserviert' — __( 'offen' ) becomes e.g. "open" in English and breaks has_term().
-	if ( apply_filters( 'immomakler_show_contactform', true, get_the_ID() ) && ( has_term( 'offen', 'immomakler_object_status', get_the_ID() ) || has_term( 'reserviert', 'immomakler_object_status', get_the_ID() ) ) ) :
-		?>
-		<div class="property-details-direktanfrage">
-			<a href="#immomakler-contactform-panel" class="btn btn-primary btn-direktanfrage"><?php esc_html_e( 'Direktanfrage', 'immomakler' ); ?></a>
-		</div>
-	<?php endif; ?>
 </div> <!-- .property-details -->

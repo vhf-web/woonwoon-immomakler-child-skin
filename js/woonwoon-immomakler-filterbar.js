@@ -49,8 +49,11 @@
         $module.prepend($header);
       }
 
-      // Move wishlist button into header.
-      const $wishlist = $module.find('.immomakler-cart-button, .immomakler-cart-link').first();
+      // Move wishlist button into header (class + badge fallback for translated / altered markup).
+      let $wishlist = $module.find('.immomakler-cart-button, .immomakler-cart-link').first();
+      if (!$wishlist.length) {
+        $wishlist = $module.find('.cart-count-badge').closest('a[href]').first();
+      }
       if ($wishlist.length) {
         $wishlist
           .removeClass('btn-primary')
@@ -66,8 +69,14 @@
       // Keep only the primary CTA in the actions row.
       const $actionsRow = $module.find('.search-actions.row').first();
       if ($actionsRow.length) {
-        $actionsRow.find('.immomakler-more-options, .search-for-id, .btn-secondary, .immomakler-cart-button, .immomakler-cart-link').remove();
-        $actionsRow.find('a.btn').not('.immomakler-submit').remove();
+        // Never strip Merkliste links here: if detection above failed (e.g. EN page), removing them hid the button entirely.
+        $actionsRow.find('.immomakler-more-options, .search-for-id, .btn-secondary').remove();
+        $actionsRow
+          .find('a.btn')
+          .not('.immomakler-submit')
+          .not('.immomakler-cart-button')
+          .not('.immomakler-cart-link')
+          .remove();
 
         // Put reset link on same line as CTA.
         if ($reset.length) {

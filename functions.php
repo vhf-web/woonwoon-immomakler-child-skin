@@ -71,7 +71,7 @@ add_action( 'wp_enqueue_scripts', function () {
 		'woonwoon-immomakler-filterbar',
 		plugins_url( 'js/woonwoon-immomakler-filterbar.js', __FILE__ ),
 		[ 'jquery' ],
-		'2026-02-20.1',
+		'2026-03-25.1',
 		true
 	);
 }, 30 );
