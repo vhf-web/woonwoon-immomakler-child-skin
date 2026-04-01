@@ -34,6 +34,48 @@
     });
   }
 
+  /**
+   * Stable analytics hooks for GTM / GA4 (Click – All Elements with data-track).
+   * Re-applied after AJAX form refresh.
+   */
+  function attachDataTrack(context) {
+    const $ctx = context ? $(context) : $(document);
+
+    $ctx.find('.immomakler-submit').attr('data-track', 'immomakler_search_submit');
+
+    $ctx
+      .find('#immomakler-search-reset, a.woonwoon-reset-link')
+      .attr('data-track', 'immomakler_search_reset');
+
+    $ctx
+      .find(
+        '.immomakler-cart-button, .immomakler-cart-link, a.woonwoon-wishlist'
+      )
+      .attr('data-track', 'immomakler_wishlist_open');
+
+    $ctx
+      .find('.search-for-id button[type="submit"], .search-for-id .btn')
+      .attr('data-track', 'immomakler_search_objekt_id_submit');
+
+    $ctx
+      .find('.immomakler-more-options')
+      .attr('data-track', 'immomakler_search_more_options');
+
+    $ctx
+      .find('.pages-nav a, .paginator a')
+      .attr('data-track', 'immomakler_pagination');
+
+    $ctx
+      .find('button.immomakler-load-more-btn')
+      .attr('data-track', 'immomakler_load_more');
+
+    $ctx
+      .find(
+        '.immobilie-cart-addremove a, .property .in-cart, a.in-cart'
+      )
+      .attr('data-track', 'immomakler_archive_merken');
+  }
+
   function enhanceFilterBar(context) {
     const $ctx = context ? $(context) : $(document);
     const $modules = $ctx.find('[id$="immomakler-search-advanced"]');
@@ -95,6 +137,7 @@
   function runEnhancements(context) {
     initSelectpicker(context);
     enhanceFilterBar(context);
+    attachDataTrack(context);
   }
 
   $(function () {

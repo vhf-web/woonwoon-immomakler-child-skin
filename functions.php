@@ -49,6 +49,7 @@ add_filter( 'gettext', function ( $translated, $text, $domain ) {
 		'Bezirk wählen'      => 'Select district',
 		'{0} ausgewählt'     => '{0} selected',
 		'Ergebnisse anzeigen' => 'Show results',
+		'ID, Straße, Ort, Objekttitel oder Merkmal' => 'ID, street, city, title or feature',
 	];
 	return isset( $map[ $text ] ) ? $map[ $text ] : $translated;
 }, 10, 3 );
@@ -71,10 +72,19 @@ add_action( 'wp_enqueue_scripts', function () {
 		'woonwoon-immomakler-filterbar',
 		plugins_url( 'js/woonwoon-immomakler-filterbar.js', __FILE__ ),
 		[ 'jquery' ],
-		'2026-03-25.1',
+		'2026-04-01.1',
 		true
 	);
 }, 30 );
+
+// Allow `woonwoon_q` on the main query (URL + $query->get).
+add_filter(
+	'query_vars',
+	static function ( array $vars ): array {
+		$vars[] = 'woonwoon_q';
+		return $vars;
+	}
+);
 
 // Archive subtitle
 add_filter( 'immomakler_archive_subheadline', function ( $title ) {
@@ -977,7 +987,7 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field immomakler-search-rooms">';
 	echo '<div class="range-label">' . esc_html__( 'Zimmer', 'immomakler' ) . '</div>';
-	echo '<select class="selectpicker form-control" name="zimmer_multi[]" multiple data-width="100%" data-actions-box="false" data-selected-text-format="count > 1" data-count-selected-text="' . esc_attr__( '{0} ausgewählt', 'immomakler-child-skin' ) . '" title="' . esc_attr__( 'Zimmer auswählen', 'immomakler-child-skin' ) . '">';
+	echo '<select class="selectpicker form-control" name="zimmer_multi[]" multiple data-width="100%" data-actions-box="false" data-selected-text-format="count > 1" data-count-selected-text="' . esc_attr__( '{0} ausgewählt', 'immomakler-child-skin' ) . '" title="' . esc_attr__( 'Zimmer auswählen', 'immomakler-child-skin' ) . '" data-track="immomakler_filter_rooms">';
 	foreach ( $options as $value => $label ) {
 		$is_selected = in_array( (string) $value, $selected, true ) ? ' selected' : '';
 		$lbl = ( $value === '5plus' ) ? '5+' : $label;
@@ -990,8 +1000,8 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-area">';
 	echo '<div class="range-label">' . esc_html__( 'Fläche', 'immomakler' ) . ' (m²)</div>';
 	echo '<div class="woonwoon-minmax">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="von-qm" placeholder="' . esc_attr__( 'Min', 'immomakler' ) . '" value="' . esc_attr( $qm_min ) . '">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="bis-qm" placeholder="' . esc_attr__( 'Max', 'immomakler' ) . '" value="' . esc_attr( $qm_max ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="von-qm" placeholder="' . esc_attr__( 'Min', 'immomakler' ) . '" value="' . esc_attr( $qm_min ) . '" data-track="immomakler_filter_area_min">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="1" name="bis-qm" placeholder="' . esc_attr__( 'Max', 'immomakler' ) . '" value="' . esc_attr( $qm_max ) . '" data-track="immomakler_filter_area_max">';
 	echo '</div>';
 	echo '</fieldset>';
 
@@ -999,8 +1009,8 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-rent">';
 	echo '<div class="range-label">' . esc_html__( 'Miete', 'immomakler' ) . ' (' . esc_html( $currency ) . ')</div>';
 	echo '<div class="woonwoon-minmax">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="von-pauschalmiete" placeholder="' . esc_attr__( 'Min', 'immomakler' ) . '" value="' . esc_attr( $rent_min ) . '">';
-	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="bis-pauschalmiete" placeholder="' . esc_attr__( 'Max', 'immomakler' ) . '" value="' . esc_attr( $rent_max ) . '">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="von-pauschalmiete" placeholder="' . esc_attr__( 'Min', 'immomakler' ) . '" value="' . esc_attr( $rent_min ) . '" data-track="immomakler_filter_rent_min">';
+	echo '<input class="form-control" type="number" inputmode="numeric" min="0" step="50" name="bis-pauschalmiete" placeholder="' . esc_attr__( 'Max', 'immomakler' ) . '" value="' . esc_attr( $rent_max ) . '" data-track="immomakler_filter_rent_max">';
 	echo '</div>';
 	echo '</fieldset>';
 
@@ -1030,7 +1040,7 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	$bezirk_options = woonwoon_get_regionaler_zusatz_options();
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-bezirk">';
 	echo '<div class="range-label">' . esc_html__( 'Bezirk / Ortsteil', 'immomakler-child-skin' ) . '</div>';
-	echo '<select class="selectpicker form-control" name="bezirk[]" multiple data-width="100%" data-actions-box="false" data-live-search="true" data-selected-text-format="count > 1" data-count-selected-text="' . esc_attr__( '{0} ausgewählt', 'immomakler-child-skin' ) . '" title="' . esc_attr__( 'Bezirk wählen', 'immomakler-child-skin' ) . '">';
+	echo '<select class="selectpicker form-control" name="bezirk[]" multiple data-width="100%" data-actions-box="false" data-live-search="true" data-selected-text-format="count > 1" data-count-selected-text="' . esc_attr__( '{0} ausgewählt', 'immomakler-child-skin' ) . '" title="' . esc_attr__( 'Bezirk wählen', 'immomakler-child-skin' ) . '" data-track="immomakler_filter_bezirk">';
 	foreach ( $bezirk_options as $v ) {
 		$is_selected = in_array( (string) $v, $bezirk_selected, true ) ? ' selected' : '';
 		echo '<option value="' . esc_attr( (string) $v ) . '"' . $is_selected . '>' . esc_html( (string) $v ) . '</option>';
@@ -1050,7 +1060,7 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	}
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-verfuegbar-ab">';
 	echo '<div class="range-label">' . esc_html__( 'Verfügbar ab', 'immomakler-child-skin' ) . '</div>';
-	echo '<input class="form-control" type="date" name="verfuegbar_ab" value="' . esc_attr( $verfuegbar_ab ) . '">';
+	echo '<input class="form-control" type="date" name="verfuegbar_ab" value="' . esc_attr( $verfuegbar_ab ) . '" data-track="immomakler_filter_verfuegbar_ab">';
 	echo '</fieldset>';
 
 	// Freitext-Suche über mehrere Felder (Objekt-ID, Adresse, Bezirk, etc.)
@@ -1064,7 +1074,7 @@ add_action( 'immomakler_search_form_after_ranges', function () {
 	echo '<fieldset class="immomakler-search-range woonwoon-filter-field woonwoon-filter-objektid">';
 	echo '<div class="range-label">' . esc_html__( 'Suche', 'immomakler-child-skin' ) . '</div>';
 	echo '<div class="woonwoon-minmax">';
-	echo '<input class="form-control" type="text" name="woonwoon_q" placeholder="' . esc_attr__( 'ID, Adresse oder Merkmal eingeben', 'immomakler-child-skin' ) . '" value="' . esc_attr( $search_keyword ) . '">';
+	echo '<input class="form-control" type="text" name="woonwoon_q" placeholder="' . esc_attr__( 'ID, Straße, Ort, Objekttitel oder Merkmal', 'immomakler-child-skin' ) . '" value="' . esc_attr( $search_keyword ) . '" data-track="immomakler_search_freitext" autocomplete="off">';
 	echo '</div>';
 	echo '</fieldset>';
 }, 20 );
@@ -1468,7 +1478,8 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	 * - Uses GET/POST param `woonwoon_q`
 	 * - Matches:
 	 *   - Objekt-ID Felder (objektnr_extern_normalized, objektnr_extern, objektnr_intern) per RLIKE Prefix
-	 *   - Adresse / Bezirk (plz, regionaler_zusatz_clean, regionaler_zusatz) per LIKE
+	 *   - Adresse / Standort (strasse, hausnummer, plz, ort, regionaler_zusatz_clean, regionaler_zusatz) per LIKE
+	 *   - Objekttitel (Meta) per LIKE
 	 *   - Gesamte immomakler_metadata (Fallback, kann langsamer sein – Datenbestand hier ist überschaubar)
 	 */
 	$keyword = $query->get( 'woonwoon_q' );
@@ -1512,8 +1523,18 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 			];
 		}
 
-		// Adresse / Bezirk / sonstige Textfelder (LIKE).
-		foreach ( [ 'plz', 'regionaler_zusatz_clean', 'regionaler_zusatz' ] as $meta_key ) {
+		// Adresse, Ort, Titel, Bezirk (LIKE).
+		foreach (
+			[
+				'strasse',
+				'hausnummer',
+				'plz',
+				'ort',
+				'objekttitel',
+				'regionaler_zusatz_clean',
+				'regionaler_zusatz',
+			] as $meta_key
+		) {
 			$or_search[] = [
 				'key'     => $meta_key,
 				'value'   => $keyword,

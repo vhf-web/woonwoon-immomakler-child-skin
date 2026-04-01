@@ -13,6 +13,7 @@
 	<a class="btn btn-default btn-sm"
 	   role="button"
 	   rel="nofollow"
+	   data-track="immomakler_single_back_archive"
 	   href="<?php echo esc_url_raw( immomakler_back_to_archive_link() ); ?>">
 		<span class="glyphicon glyphicon-list"></span>
 		<?php esc_html_e( 'Zur Übersicht', 'immomakler' ); ?>
@@ -25,7 +26,7 @@
 		 && ( has_term( 'offen', 'immomakler_object_status', get_the_ID() )
 			  || has_term( 'reserviert', 'immomakler_object_status', get_the_ID() ) ) ) :
 		?>
-		<a class="btn btn-primary btn-sm" role="button" href="#immomakler-contactform-panel">
+		<a class="btn btn-primary btn-sm" role="button" data-track="immomakler_single_contact" href="#immomakler-contactform-panel">
 			<span class="glyphicon glyphicon-envelope"></span>
 			<?php esc_html_e( 'Direktanfrage', 'immomakler' ); ?>
 		</a>
