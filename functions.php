@@ -1154,6 +1154,99 @@ function woonwoon_is_immomakler_query( WP_Query $query ) {
 	return false;
 }
 
+/**
+ * Build spelling variants for German freetext search (ß/ss, Straße/Strasse, umlauts ↔ ae/oe/ue).
+ *
+ * @return string[] Unique non-empty strings (original first when present).
+ */
+function woonwoon_german_freitext_variants( string $keyword ): array {
+	$keyword = trim( $keyword );
+	if ( $keyword === '' ) {
+		return [];
+	}
+
+	$out = [];
+	$add = static function ( string $v ) use ( &$out ): void {
+		$v = trim( $v );
+		if ( $v !== '' && ! in_array( $v, $out, true ) ) {
+			$out[] = $v;
+		}
+	};
+
+	$add( $keyword );
+
+	// Umlauts + ß -> ASCII-style digraphs (Drakestraße -> Drakestrasse, Köln -> Koeln).
+	$from_u = [ 'ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß' ];
+	$to_a   = [ 'ae', 'oe', 'ue', 'Ae', 'Oe', 'Ue', 'ss' ];
+	$folded = str_replace( $from_u, $to_a, $keyword );
+	$add( $folded );
+
+	// Kein globales ae/oe/ue -> Umlaut (zerstört z. B. "Goethestrasse").
+	// Stattdessen: häufige reine ASCII-Schreibweisen von Ortsnamen (exakter String, case-insensitive).
+	$ascii_city = mb_strtolower( $keyword, 'UTF-8' );
+	$city_map   = apply_filters(
+		'woonwoon_german_freitext_ascii_city_map',
+		[
+			'koeln'       => 'Köln',
+			'muenchen'    => 'München',
+			'nuernberg'   => 'Nürnberg',
+			'duesseldorf' => 'Düsseldorf',
+			'fuessen'     => 'Füssen',
+			'ruesselsheim'=> 'Rüsselsheim',
+		]
+	);
+	if ( isset( $city_map[ $ascii_city ] ) ) {
+		$add( $city_map[ $ascii_city ] );
+	}
+
+	// Straße / Strasse (word boundary).
+	if ( preg_match( '/\bstrasse\b/iu', $keyword ) ) {
+		$add( preg_replace( '/\bstrasse\b/iu', 'straße', $keyword ) );
+		$add( preg_replace( '/\bstrasse\b/iu', 'Straße', $keyword ) );
+	}
+	if ( preg_match( '/\bstraße\b/iu', $keyword ) ) {
+		$add( preg_replace( '/\bstraße\b/iu', 'strasse', $keyword ) );
+		$add( preg_replace( '/\bstraße\b/iu', 'Strasse', $keyword ) );
+	}
+
+	// Plural / compound: …strassen… -> …straßen…
+	if ( preg_match( '/strassen/iu', $keyword ) && ! preg_match( '/straße/iu', $keyword ) ) {
+		$add( preg_replace( '/strassen/iu', 'straßen', $keyword ) );
+		$add( preg_replace( '/strassen/iu', 'Straßen', $keyword ) );
+	}
+
+	// ß <-> ss (word-internal), avoids touching "Strasse" already handled above.
+	if ( strpos( $keyword, 'ß' ) !== false || strpos( $keyword, 'ẞ' ) !== false ) {
+		$add( str_replace( [ 'ß', 'ẞ' ], [ 'ss', 'SS' ], $keyword ) );
+	}
+	if ( strpos( $keyword, 'ß' ) === false && strpos( $keyword, 'ss' ) !== false
+		&& ! preg_match( '/\bstrasse\b/iu', $keyword ) ) {
+		$try = preg_replace( '/(?<=\p{L})ss(?=\p{L})/u', 'ß', $keyword );
+		if ( is_string( $try ) && $try !== $keyword ) {
+			$add( $try );
+		}
+	}
+
+	// Strip combining marks (Köln -> Koln) to match ASCII-only stored values.
+	if ( function_exists( 'normalizer_normalize' ) && class_exists( 'Normalizer', false ) ) {
+		$n = normalizer_normalize( $keyword, \Normalizer::FORM_D );
+		if ( is_string( $n ) && $n !== '' ) {
+			$stripped = preg_replace( '/\p{M}/u', '', $n );
+			if ( is_string( $stripped ) ) {
+				$add( $stripped );
+			}
+		}
+	}
+
+	/**
+	 * Filter: add or remove variants (e.g. site-specific synonyms).
+	 *
+	 * @param string[] $variants
+	 * @return string[]
+	 */
+	return apply_filters( 'woonwoon_german_freitext_variants', $out, $keyword );
+}
+
 function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	// Only touch frontend property queries.
 	if ( is_admin() ) {
@@ -1478,9 +1571,8 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	 * - Uses GET/POST param `woonwoon_q`
 	 * - Matches:
 	 *   - Objekt-ID Felder (objektnr_extern_normalized, objektnr_extern, objektnr_intern) per RLIKE Prefix
-	 *   - Adresse / Standort (strasse, hausnummer, plz, ort, regionaler_zusatz_clean, regionaler_zusatz) per LIKE
-	 *   - Objekttitel (Meta) per LIKE
-	 *   - Gesamte immomakler_metadata (Fallback, kann langsamer sein – Datenbestand hier ist überschaubar)
+	 *   - Adresse / Standort / Titel per LIKE, mit Varianten für ß/ss, Straße/Strasse, Umlaute ↔ ae/oe/ue (siehe woonwoon_german_freitext_variants)
+	 *   - Gesamte immomakler_metadata (Fallback)
 	 */
 	$keyword = $query->get( 'woonwoon_q' );
 	if ( $keyword === null || $keyword === '' ) {
@@ -1523,31 +1615,36 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 			];
 		}
 
-		// Adresse, Ort, Titel, Bezirk (LIKE).
-		foreach (
-			[
-				'strasse',
-				'hausnummer',
-				'plz',
-				'ort',
-				'objekttitel',
-				'regionaler_zusatz_clean',
-				'regionaler_zusatz',
-			] as $meta_key
-		) {
-			$or_search[] = [
-				'key'     => $meta_key,
-				'value'   => $keyword,
-				'compare' => 'LIKE',
-			];
+		$text_variants = woonwoon_german_freitext_variants( $keyword );
+
+		// Adresse, Ort, Titel, Bezirk (LIKE) — alle Schreibvarianten (ß/ss, Umlaute, …).
+		$like_meta_keys = [
+			'strasse',
+			'hausnummer',
+			'plz',
+			'ort',
+			'objekttitel',
+			'regionaler_zusatz_clean',
+			'regionaler_zusatz',
+		];
+		foreach ( $text_variants as $variant ) {
+			foreach ( $like_meta_keys as $meta_key ) {
+				$or_search[] = [
+					'key'     => $meta_key,
+					'value'   => $variant,
+					'compare' => 'LIKE',
+				];
+			}
 		}
 
 		// Fallback: gesamtes Metadata-Containerfeld durchsuchen.
-		$or_search[] = [
-			'key'     => 'immomakler_metadata',
-			'value'   => $keyword,
-			'compare' => 'LIKE',
-		];
+		foreach ( $text_variants as $variant ) {
+			$or_search[] = [
+				'key'     => 'immomakler_metadata',
+				'value'   => $variant,
+				'compare' => 'LIKE',
+			];
+		}
 
 		if ( count( $or_search ) > 1 ) {
 			$meta_query[] = $or_search;
