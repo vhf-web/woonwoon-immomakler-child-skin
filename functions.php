@@ -27,36 +27,33 @@ add_filter( 'immomakler_search_selectpicker_show_done_button', '__return_false' 
 add_filter( 'immomakler_search_button_text', function ( $text, $count ) {
 	return __( 'Ergebnisse anzeigen', 'immomakler-child-skin' );
 }, 20, 2 );
-// Tracking: GTM dataLayer push on "Anfrage senden" button click.
+// Tracking: GA4 Event auf "Anfrage senden" Button
 add_action( 'wp_footer', 'woonwoon_anfragen_tracking' );
 function woonwoon_anfragen_tracking() {
-    if ( ! is_singular( 'immomakler_object' ) ) {
-        return;
-    }
-    ?>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var btn = document.querySelector('button.submit.btn.btn-primary');
-        if (btn) {
-            btn.addEventListener('click', function() {
-                window.dataLayer = window.dataLayer || [];
-                window.dataLayer.push({
-                    'event': 'anfrage_gesendet',
-                    'event_category': 'Kontaktformular',
-                    'event_label': document.title,
-                    'page_url': window.location.href,
-                    'posts_id': document.querySelector('input[name="posts"]')
-                                ? document.querySelector('input[name="posts"]').value
-                                : 'unbekannt'
-                });
-            });
-        }
-    });
-    </script>
-    <?php
+	if ( ! is_singular( 'immomakler_object' ) ) {
+		return;
+	}
+	?>
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		var btn = document.querySelector('button.submit.btn.btn-primary');
+		if (btn) {
+			btn.addEventListener('click', function() {
+				gtag('event', 'anfrage_gesendet', {
+					'send_to': 'G-JLFWVX7YYY',
+					'event_category': 'Kontaktformular',
+					'event_label': document.title,
+					'page_url': window.location.href,
+					'posts_id': document.querySelector('input[name="posts"]')
+								? document.querySelector('input[name="posts"]').value
+								: 'unbekannt'
+				});
+			});
+		}
+	});
+	</script>
+	<?php
 }
-
-
 
 /**
  * English translations for child-skin search filter strings (no .po for child).
