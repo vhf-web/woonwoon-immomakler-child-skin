@@ -341,7 +341,27 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 		padding:10px;
 	}
 	.post-type-archive-immomakler_object .immomakler .search-actions.row{
-		justify-content:unset;
+		justify-content:flex-start;
+		align-items:stretch;
+		flex-direction:column;
+		gap:8px;
+	}
+	.post-type-archive-immomakler_object .immomakler .search-actions.row .immomakler-submit.btn.btn-primary{
+		order:1;
+		width:100%;
+		white-space:nowrap;
+	}
+	.post-type-archive-immomakler_object .immomakler .search-actions.row .woonwoon-reset-link{
+		order:2;
+		display:inline-block;
+	}
+	.post-type-archive-immomakler_object .immomakler .woonwoon-filter-verfuegbar-ab{
+		min-width:0;
+	}
+	.post-type-archive-immomakler_object .immomakler .woonwoon-filter-verfuegbar-ab input[type="date"]{
+		width:100%;
+		max-width:100%;
+		min-width:0;
 	}
 }
 @media (max-width: 767px) {
