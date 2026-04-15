@@ -333,6 +333,16 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 	.single-immomakler_object .property-actions.btn-group .btn{
 		margin-right: 6px;
 	}
+	.post-type-archive-immomakler_object .immomakler-archive,
+	.immomakler-single.immomakler{
+		margin: 0px 1em;
+	}
+	.post-type-archive-immomakler_object #immomakler-search-advanced{
+		padding:10px;
+	}
+	.post-type-archive-immomakler_object .immomakler .search-actions.row{
+		justify-content:unset;
+	}
 }
 @media (max-width: 767px) {
 	.immomakler-archive .property-container.immomakler-archive-item-layout-condensed .property-title{
@@ -392,7 +402,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 		margin: 0 1.5em 0;
 	}
 	.post-type-archive-immomakler_object #immomakler-search-advanced{
-		padding:0px;
+		padding:10px;
 		margin-top:0px;
 	}
 
