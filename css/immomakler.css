@@ -325,7 +325,13 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 
 @media (max-width: 1024px) {
 	.post-type-archive-immomakler_object .immomakler .search-ranges.row {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(1, minmax(0, 1fr));
+	}
+	.immomakler-archive .property-container.immomakler-archive-item-layout-condensed .property-title{
+		height: calc(3 * 1.4 * 1.2em);
+	}
+	.single-immomakler_object .property-actions.btn-group .btn{
+		margin-right: 6px;
 	}
 }
 @media (max-width: 767px) {
