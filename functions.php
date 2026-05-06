@@ -1806,3 +1806,210 @@ function woonwoon_shortcode_zimmer_apartments( $atts = [] ): string {
 
 	return do_shortcode( $sc );
 }
+
+/* ------------------------------------------------------------
+ * Shortcode: Bezugsfrei / verfügbar spätestens heute, sortiert „ab jetzt“
+ * ------------------------------------------------------------
+ * Zeigt Wohnungen, deren „Verfügbar ab“ leer, sofort/momentan ist oder ein
+ * Datum ≤ heute ist (OpenImmo oft Y-m-d, alternativ d.m.Y). Unbekannter
+ * Freitext wird ausgeschlossen (Filter: woonwoon_verfuegbar_treat_unknown_as_available).
+ *
+ * Sortierung: zuerst Sofort/leer, dann nach Bezugsdatum absteigend (näher an heute),
+ * bei Gleichstand nach Veröffentlichungsdatum.
+ *
+ * Usage:
+ *   [woonwoon_available_from_today]
+ *   [woonwoon_available_from_today limit="6" columns="2"]
+ *   [woonwoon_available_from_today limit="12" max_scan="800"]
+ */
+
+add_action(
+	'init',
+	static function () {
+		add_shortcode( 'woonwoon_available_from_today', 'woonwoon_shortcode_available_from_today' );
+	}
+);
+
+/**
+ * Whether a non-empty verfuegbar_ab value should count as „sofort“ (no separate date).
+ *
+ * @param string $raw Meta value.
+ */
+function woonwoon_verfuegbar_is_immediate_text( string $raw ): bool {
+	$n = mb_strtolower( trim( $raw ), 'UTF-8' );
+	if ( $n === '' ) {
+		return true;
+	}
+	$exact = apply_filters(
+		'woonwoon_available_immediate_strings',
+		[
+			'sofort',
+			'ab sofort',
+			'ab-sofort',
+			'ab heute',
+			'ab datum',
+			'jetzt',
+			'unmittelbar',
+			'bezugsfrei',
+			'bezugsfertig',
+			'sofort verfügbar',
+			'sofortverfügbar',
+			'immediate',
+		]
+	);
+	foreach ( $exact as $phrase ) {
+		$p = mb_strtolower( trim( (string) $phrase ), 'UTF-8' );
+		if ( $p === '' ) {
+			continue;
+		}
+		if ( $n === $p ) {
+			return true;
+		}
+	}
+	// „enthält sofort“ nur als ganze Wort-ähnliche Phrase (vermeidet False Positives).
+	if ( preg_match( '/\bsofort\b/u', $n ) || preg_match( '/\bbezugsfrei\b/u', $n ) ) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Parse verfuegbar_ab to Unix timestamp (local meaning via wp_timezone) or null.
+ *
+ * @param string $raw Meta value (possibly with trailing text).
+ */
+function woonwoon_verfuegbar_parse_date_ts( string $raw ): ?int {
+	$raw = trim( $raw );
+	if ( $raw === '' || woonwoon_verfuegbar_is_immediate_text( $raw ) ) {
+		return null;
+	}
+	$tz = wp_timezone();
+	if ( preg_match( '/^(\d{4})-(\d{2})-(\d{2})/', $raw, $m ) ) {
+		$d = \DateTimeImmutable::createFromFormat( '!Y-m-d', $m[1] . '-' . $m[2] . '-' . $m[3], $tz );
+	} elseif ( preg_match( '/^(\d{1,2})\.(\d{1,2})\.(\d{4})\b/', $raw, $m ) ) {
+		$ds = sprintf( '%02d.%02d.%04d', (int) $m[1], (int) $m[2], (int) $m[3] );
+		$d  = \DateTimeImmutable::createFromFormat( '!d.m.Y', $ds, $tz );
+	} else {
+		return null;
+	}
+	if ( ! $d instanceof \DateTimeImmutable ) {
+		return null;
+	}
+	return $d->getTimestamp();
+}
+
+/**
+ * True if the property should appear in „verfügbar ab heute“ (already or immediately).
+ *
+ * @param string $raw post_meta verfuegbar_ab.
+ */
+function woonwoon_verfuegbar_is_available_on_or_before_today( string $raw ): bool {
+	$raw = trim( $raw );
+	if ( woonwoon_verfuegbar_is_immediate_text( $raw ) ) {
+		return true;
+	}
+	$ts = woonwoon_verfuegbar_parse_date_ts( $raw );
+	if ( $ts !== null ) {
+		$tz    = wp_timezone();
+		$day   = ( new \DateTimeImmutable( '@' . $ts ) )->setTimezone( $tz )->format( 'Y-m-d' );
+		$today = ( new \DateTimeImmutable( 'now', $tz ) )->format( 'Y-m-d' );
+		return $day <= $today;
+	}
+	return (bool) apply_filters( 'woonwoon_verfuegbar_treat_unknown_as_available', false, $raw );
+}
+
+/**
+ * Sort tuple for usort: lower = earlier in output (immediate first).
+ *
+ * @return int[]
+ */
+function woonwoon_verfuegbar_sort_tuple( int $post_id, string $raw ): array {
+	$published = (int) get_post_time( 'U', true, $post_id );
+	if ( woonwoon_verfuegbar_is_immediate_text( $raw ) ) {
+		return [ 0, 0, -$published ];
+	}
+	$dts = woonwoon_verfuegbar_parse_date_ts( $raw );
+	if ( $dts !== null ) {
+		return [ 1, -$dts, -$published ];
+	}
+	return [ 2, 0, -$published ];
+}
+
+/**
+ * @param array<string,string> $atts limit, columns, max_scan.
+ */
+function woonwoon_shortcode_available_from_today( $atts = [] ): string {
+	$atts = shortcode_atts(
+		[
+			'limit'    => '12',
+			'columns'  => '',
+			'max_scan' => '500',
+		],
+		$atts,
+		'woonwoon_available_from_today'
+	);
+
+	$limit    = absint( $atts['limit'] );
+	$max_scan = absint( $atts['max_scan'] );
+	if ( $limit < 1 ) {
+		$limit = 12;
+	}
+	if ( $max_scan < $limit ) {
+		$max_scan = $limit;
+	}
+	$max_scan = min( 2000, max( 50, $max_scan ) );
+
+	$query = new WP_Query(
+		[
+			'post_type'           => 'immomakler_object',
+			'post_status'         => 'publish',
+			'fields'              => 'ids',
+			'posts_per_page'      => $max_scan,
+			'no_found_rows'       => true,
+			'ignore_sticky_posts' => true,
+			'orderby'             => 'date',
+			'order'               => 'DESC',
+		]
+	);
+
+	$ids = array_map( 'absint', $query->posts ?? [] );
+	wp_reset_postdata();
+
+	$candidates = [];
+	foreach ( $ids as $pid ) {
+		if ( $pid < 1 ) {
+			continue;
+		}
+		$raw = (string) get_post_meta( $pid, 'verfuegbar_ab', true );
+		if ( woonwoon_verfuegbar_is_available_on_or_before_today( $raw ) ) {
+			$candidates[] = $pid;
+		}
+	}
+
+	usort(
+		$candidates,
+		static function ( int $a, int $b ): int {
+			$ta = woonwoon_verfuegbar_sort_tuple( $a, (string) get_post_meta( $a, 'verfuegbar_ab', true ) );
+			$tb = woonwoon_verfuegbar_sort_tuple( $b, (string) get_post_meta( $b, 'verfuegbar_ab', true ) );
+			foreach ( [ 0, 1, 2 ] as $i ) {
+				if ( $ta[ $i ] !== $tb[ $i ] ) {
+					return $ta[ $i ] <=> $tb[ $i ];
+				}
+			}
+			return 0;
+		}
+	);
+
+	$candidates = array_slice( $candidates, 0, $limit );
+	if ( empty( $candidates ) ) {
+		return '';
+	}
+
+	$sc = '[immomakler-archive post__in="' . esc_attr( implode( ',', $candidates ) ) . '" limit="' . (string) count( $candidates ) . '" orderby="post__in" order="ASC"';
+	if ( $atts['columns'] !== '' && absint( $atts['columns'] ) > 0 ) {
+		$sc .= ' columns="' . absint( $atts['columns'] ) . '"';
+	}
+	$sc .= ']';
+
+	return do_shortcode( $sc );
+}
