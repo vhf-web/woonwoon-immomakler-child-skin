@@ -1,0 +1,152 @@
+/* global jQuery */
+(function ($) {
+  function initSelectpicker(context) {
+    const $ctx = context ? $(context) : $(document);
+    const $selects = $ctx.find('select.selectpicker');
+    if (!$selects.length) return;
+
+    const hasPlugin = typeof $.fn.selectpicker === 'function';
+    if (!hasPlugin) return;
+
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry/i.test(
+      navigator.userAgent || ''
+    );
+
+    $selects.each(function () {
+      const $el = $(this);
+      try {
+        if (isMobile) {
+          $el.selectpicker('mobile');
+          return;
+        }
+
+        if ($el.data('selectpicker')) {
+          $el.selectpicker('refresh');
+        } else {
+          $el.selectpicker({
+            tickIcon: 'glyphicon-check',
+            doneButton: false,
+          });
+        }
+      } catch (_) {
+        // ignore
+      }
+    });
+  }
+
+  /**
+   * Stable analytics hooks for GTM / GA4 (Click – All Elements with data-track).
+   * Re-applied after AJAX form refresh.
+   */
+  function attachDataTrack(context) {
+    const $ctx = context ? $(context) : $(document);
+
+    $ctx.find('.immomakler-submit').attr('data-track', 'immomakler_search_submit');
+
+    $ctx
+      .find('#immomakler-search-reset, a.woonwoon-reset-link')
+      .attr('data-track', 'immomakler_search_reset');
+
+    $ctx
+      .find(
+        '.immomakler-cart-button, .immomakler-cart-link, a.woonwoon-wishlist'
+      )
+      .attr('data-track', 'immomakler_wishlist_open');
+
+    $ctx
+      .find('.search-for-id button[type="submit"], .search-for-id .btn')
+      .attr('data-track', 'immomakler_search_objekt_id_submit');
+
+    $ctx
+      .find('.immomakler-more-options')
+      .attr('data-track', 'immomakler_search_more_options');
+
+    $ctx
+      .find('.pages-nav a, .paginator a')
+      .attr('data-track', 'immomakler_pagination');
+
+    $ctx
+      .find('button.immomakler-load-more-btn')
+      .attr('data-track', 'immomakler_load_more');
+
+    $ctx
+      .find(
+        '.immobilie-cart-addremove a, .property .in-cart, a.in-cart'
+      )
+      .attr('data-track', 'immomakler_archive_merken');
+  }
+
+  function enhanceFilterBar(context) {
+    const $ctx = context ? $(context) : $(document);
+    const $modules = $ctx.find('[id$="immomakler-search-advanced"]');
+    if (!$modules.length) return;
+
+    $modules.each(function () {
+      const $module = $(this);
+
+      // Create header container (top-right wishlist).
+      let $header = $module.children('.woonwoon-filter-header');
+      if (!$header.length) {
+        $header = $('<div class="woonwoon-filter-header" />');
+        $module.prepend($header);
+      }
+
+      // Move wishlist button into header (class + badge fallback for translated / altered markup).
+      let $wishlist = $module.find('.immomakler-cart-button, .immomakler-cart-link').first();
+      if (!$wishlist.length) {
+        $wishlist = $module.find('.cart-count-badge').closest('a[href]').first();
+      }
+      if ($wishlist.length) {
+        $wishlist
+          .removeClass('btn-primary')
+          .addClass('woonwoon-wishlist');
+        $header.empty().append($wishlist);
+      }
+
+      // Move reset into a subtle secondary line under filters.
+      const $reset = $('#immomakler-search-reset').length
+        ? $('#immomakler-search-reset')
+        : $module.find('#immomakler-search-reset').first();
+
+      // Keep only the primary CTA in the actions row.
+      const $actionsRow = $module.find('.search-actions.row').first();
+      if ($actionsRow.length) {
+        // Never strip Merkliste links here: if detection above failed (e.g. EN page), removing them hid the button entirely.
+        $actionsRow.find('.immomakler-more-options, .search-for-id, .btn-secondary').remove();
+        $actionsRow
+          .find('a.btn')
+          .not('.immomakler-submit')
+          .not('.immomakler-cart-button')
+          .not('.immomakler-cart-link')
+          .remove();
+
+        // Put reset link on same line as CTA.
+        if ($reset.length) {
+          $reset.removeClass('btn btn-secondary').addClass('woonwoon-reset-link');
+          // Ensure it sits before the CTA.
+          if (!$actionsRow.find('#immomakler-search-reset').length) {
+            $actionsRow.prepend($reset);
+          } else {
+            $actionsRow.find('#immomakler-search-reset').prependTo($actionsRow);
+          }
+        }
+      }
+    });
+  }
+
+  function runEnhancements(context) {
+    initSelectpicker(context);
+    enhanceFilterBar(context);
+    attachDataTrack(context);
+  }
+
+  $(function () {
+    runEnhancements(document);
+  });
+
+  // Re-apply after plugin AJAX updates.
+  $(document).ajaxComplete(function (_evt, _xhr, _settings) {
+    runEnhancements(document);
+  });
+})(jQuery);
+
