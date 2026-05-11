@@ -303,7 +303,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
    -webkit-line-clamp kürzt Überlänge ab; die feste height (2 × line-height × font-size)
    sorgt dafür, dass property-data bei allen Karten auf derselben Höhe beginnt. */
 .immomakler-archive .property-container.immomakler-archive-item-layout-condensed .property-title{
-	font-size: 1.2em;
+	font-size: 1em;
 	margin-top: 0.3em;
 	line-height: 1.4;
 	height: calc(2 * 1.4 * 1.2em);

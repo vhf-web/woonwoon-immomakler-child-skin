@@ -1561,8 +1561,8 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 	 * Verfügbar ab (availability date):
 	 * - Uses GET/POST param `verfuegbar_ab` (YYYY-MM-DD)
 	 * - Filters meta_key `verfuegbar_ab` (mirrored from immomakler_metadata)
-	 * - Shows objects available from the selected date or later
-	 * - Includes text values: "ab sofort" (= from now), "bis Ende des Jahres" (= available until end of year)
+	 * - Shows objects already available on or before the selected date (no future dates)
+	 * - Includes immediate/empty values ("ab sofort", "sofort", "")
 	 */
 	$verfuegbar_ab_val = $query->get( 'verfuegbar_ab' );
 	if ( $verfuegbar_ab_val === null || $verfuegbar_ab_val === '' ) {
@@ -1578,7 +1578,7 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 				'key'     => 'verfuegbar_ab',
 				'value'   => $verfuegbar_ab_val,
 				'type'    => 'DATE',
-				'compare' => '>=',
+				'compare' => '<=',
 			],
 			[
 				'key'     => 'verfuegbar_ab',
@@ -1587,8 +1587,8 @@ function woonwoon_search_pre_get_posts( WP_Query $query ) {
 			],
 			[
 				'key'     => 'verfuegbar_ab',
-				'value'   => 'bis Ende',
-				'compare' => 'LIKE',
+				'value'   => '',
+				'compare' => '=',
 			],
 		];
 	}
