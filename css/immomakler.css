@@ -55,10 +55,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
   margin-top: 2em;
 }
 
-.post-type-archive-immomakler_object .immomakler.immomakler-map{
-	margin-top: 0 !important;
-	padding-top: 0 !important;
-}
+
 /* Archive: map at top without spacing */
 .post-type-archive-immomakler_object .immomakler .archive-map,
 .post-type-archive-immomakler_object .immomakler .immomakler-map,
@@ -558,7 +555,7 @@ Sie können somit die CSS-Angaben überschreiben oder ergänzen */
 
 .post-type-archive-immomakler_object .immomakler-archive,  .immomakler-single.immomakler{
 
-	    margin: 0px 2em;
+	    margin: 4em 2em;
 		padding-bottom:0px;
 }
 /* ======================================================================

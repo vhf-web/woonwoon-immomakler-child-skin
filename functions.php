@@ -160,6 +160,183 @@ add_action( 'immomakler_archive_property_details_bottom', function () {
 } );
 
 /* ------------------------------------------------------------
+ * Direktanfrage: Mietbeginn, Budget, Zimmerzahl
+ * ------------------------------------------------------------ */
+
+/**
+ * @param array<string, mixed> $values
+ */
+function woonwoon_contact_form_field_value( array $values, string $key ): string {
+	return isset( $values[ $key ] ) ? (string) $values[ $key ] : '';
+}
+
+/**
+ * @param array<string, mixed> $values
+ */
+function woonwoon_contact_form_capture_custom_values( array $values ): array {
+	$fields = [
+		'woonwoon_mietbeginn'  => static function (): string {
+			$raw = isset( $_POST['woonwoon_mietbeginn'] )
+				? sanitize_text_field( (string) wp_unslash( $_POST['woonwoon_mietbeginn'] ) )
+				: '';
+			return preg_match( '/^\d{4}-\d{2}-\d{2}$/', $raw ) ? $raw : '';
+		},
+		'woonwoon_budget'      => static function (): string {
+			if ( ! isset( $_POST['woonwoon_budget'] ) ) {
+				return '';
+			}
+			$raw = sanitize_text_field( (string) wp_unslash( $_POST['woonwoon_budget'] ) );
+			if ( $raw === '' ) {
+				return '';
+			}
+			$num = woonwoon_normalize_price_to_float( $raw );
+			return $num > 0 ? (string) $num : '';
+		},
+		'woonwoon_zimmerzahl'  => static function (): string {
+			if ( ! isset( $_POST['woonwoon_zimmerzahl'] ) ) {
+				return '';
+			}
+			$raw = sanitize_text_field( (string) wp_unslash( $_POST['woonwoon_zimmerzahl'] ) );
+			if ( $raw === '' ) {
+				return '';
+			}
+			$num = (float) str_replace( ',', '.', $raw );
+			return $num > 0 ? (string) $num : '';
+		},
+	];
+
+	foreach ( $fields as $key => $sanitize ) {
+		$values[ $key ] = $sanitize();
+	}
+
+	return $values;
+}
+
+/**
+ * @param array<string, mixed> $values
+ */
+function woonwoon_contact_form_custom_fields_email_block( array $values ): string {
+	$lines = [];
+
+	$mietbeginn = woonwoon_contact_form_field_value( $values, 'woonwoon_mietbeginn' );
+	if ( $mietbeginn !== '' ) {
+		$date = \DateTimeImmutable::createFromFormat( '!Y-m-d', $mietbeginn );
+		$lines[] = 'Genau Mietbeginn: ' . ( $date ? $date->format( 'd.m.Y' ) : $mietbeginn );
+	}
+
+	$budget = woonwoon_contact_form_field_value( $values, 'woonwoon_budget' );
+	if ( $budget !== '' ) {
+		$lines[] = 'Budget: ' . number_format( (float) $budget, 0, ',', '.' ) . ' EUR';
+	}
+
+	$zimmer = woonwoon_contact_form_field_value( $values, 'woonwoon_zimmerzahl' );
+	if ( $zimmer !== '' ) {
+		$zimmer_display = str_replace( '.', ',', $zimmer );
+		$lines[]        = 'Gewünschte Zimmerzahl: ' . $zimmer_display;
+	}
+
+	return implode( "\n", $lines );
+}
+
+add_action(
+	'immomakler_contactform_before_checkboxes',
+	static function ( $values, $errors ): void {
+		if ( ! is_array( $values ) ) {
+			$values = [];
+		}
+		if ( ! is_array( $errors ) ) {
+			$errors = [];
+		}
+
+		$mietbeginn = woonwoon_contact_form_field_value( $values, 'woonwoon_mietbeginn' );
+		$budget     = woonwoon_contact_form_field_value( $values, 'woonwoon_budget' );
+		$zimmer     = woonwoon_contact_form_field_value( $values, 'woonwoon_zimmerzahl' );
+		?>
+		<div class="form-group woonwoon-contact-field woonwoon-contact-mietbeginn">
+			<label for="woonwoon_mietbeginn"><?php esc_html_e( 'Genau Mietbeginn', 'immomakler-child-skin' ); ?></label>
+			<input
+				class="form-control"
+				type="date"
+				name="woonwoon_mietbeginn"
+				id="woonwoon_mietbeginn"
+				value="<?php echo esc_attr( $mietbeginn ); ?>"
+			>
+		</div>
+		<div class="form-group woonwoon-contact-field woonwoon-contact-budget">
+			<label for="woonwoon_budget"><?php esc_html_e( 'Budget', 'immomakler-child-skin' ); ?></label>
+			<input
+				class="form-control"
+				type="number"
+				inputmode="numeric"
+				min="0"
+				step="50"
+				name="woonwoon_budget"
+				id="woonwoon_budget"
+				placeholder="<?php esc_attr_e( 'EUR', 'immomakler-child-skin' ); ?>"
+				value="<?php echo esc_attr( $budget ); ?>"
+			>
+		</div>
+		<div class="form-group woonwoon-contact-field woonwoon-contact-zimmerzahl">
+			<label for="woonwoon_zimmerzahl"><?php esc_html_e( 'Gewünschte Zimmerzahl', 'immomakler-child-skin' ); ?></label>
+			<input
+				class="form-control"
+				type="number"
+				inputmode="decimal"
+				min="0.5"
+				max="10"
+				step="0.5"
+				name="woonwoon_zimmerzahl"
+				id="woonwoon_zimmerzahl"
+				value="<?php echo esc_attr( $zimmer ); ?>"
+			>
+		</div>
+		<?php
+	},
+	10,
+	2
+);
+
+add_filter(
+	'immomakler_contact_form_values',
+	static function ( $values, $errors ) {
+		if ( ! is_array( $values ) ) {
+			$values = [];
+		}
+		return woonwoon_contact_form_capture_custom_values( $values );
+	},
+	10,
+	2
+);
+
+add_filter(
+	'immomakler_contact_form_values_in_send',
+	static function ( $values ) {
+		if ( ! is_array( $values ) ) {
+			$values = [];
+		}
+		return woonwoon_contact_form_capture_custom_values( $values );
+	},
+	10,
+	1
+);
+
+add_filter(
+	'immomakler_contactform_mail_with_posts_body',
+	static function ( $body, $values, $items ) {
+		if ( ! is_array( $values ) ) {
+			return $body;
+		}
+		$extra = woonwoon_contact_form_custom_fields_email_block( $values );
+		if ( $extra === '' ) {
+			return $body;
+		}
+		return rtrim( (string) $body ) . "\n\n" . $extra;
+	},
+	10,
+	3
+);
+
+/* ------------------------------------------------------------
  * Single page: subtitle + "merken" label
  * ------------------------------------------------------------ */
 
