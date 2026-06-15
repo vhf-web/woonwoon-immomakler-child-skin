@@ -41,6 +41,13 @@ $property_data = new \ImmoMakler\Data\PropertyData();
 			<?php endif; ?>
 		<?php endforeach; ?>
 
+		<li class="list-group-item data-mietdauer">
+			<div class="row">
+				<div class="dt col-sm-5"><?php esc_html_e( 'Mietdauer', 'immomakler' ); ?></div>
+				<div class="dd col-sm-7">3. bis 12. max</div>
+			</div>
+		</li>
+
 		<?php do_action( 'immomakler_single_details_end' ); ?>
 
 		<?php
