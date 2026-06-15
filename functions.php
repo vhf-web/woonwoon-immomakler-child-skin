@@ -160,7 +160,7 @@ add_action( 'immomakler_archive_property_details_bottom', function () {
 } );
 
 /* ------------------------------------------------------------
- * Direktanfrage: Mietbeginn, Budget, Zimmerzahl
+ * Direktanfrage: Mietbeginn + Personenanzahl
  * ------------------------------------------------------------ */
 
 /**
@@ -181,26 +181,15 @@ function woonwoon_contact_form_capture_custom_values( array $values ): array {
 				: '';
 			return preg_match( '/^\d{4}-\d{2}-\d{2}$/', $raw ) ? $raw : '';
 		},
-		'woonwoon_budget'      => static function (): string {
-			if ( ! isset( $_POST['woonwoon_budget'] ) ) {
+		'woonwoon_personen'    => static function (): string {
+			if ( ! isset( $_POST['woonwoon_personen'] ) ) {
 				return '';
 			}
-			$raw = sanitize_text_field( (string) wp_unslash( $_POST['woonwoon_budget'] ) );
+			$raw = sanitize_text_field( (string) wp_unslash( $_POST['woonwoon_personen'] ) );
 			if ( $raw === '' ) {
 				return '';
 			}
-			$num = woonwoon_normalize_price_to_float( $raw );
-			return $num > 0 ? (string) $num : '';
-		},
-		'woonwoon_zimmerzahl'  => static function (): string {
-			if ( ! isset( $_POST['woonwoon_zimmerzahl'] ) ) {
-				return '';
-			}
-			$raw = sanitize_text_field( (string) wp_unslash( $_POST['woonwoon_zimmerzahl'] ) );
-			if ( $raw === '' ) {
-				return '';
-			}
-			$num = (float) str_replace( ',', '.', $raw );
+			$num = (int) $raw;
 			return $num > 0 ? (string) $num : '';
 		},
 	];
@@ -220,19 +209,13 @@ function woonwoon_contact_form_custom_fields_email_block( array $values ): strin
 
 	$mietbeginn = woonwoon_contact_form_field_value( $values, 'woonwoon_mietbeginn' );
 	if ( $mietbeginn !== '' ) {
-		$date = \DateTimeImmutable::createFromFormat( '!Y-m-d', $mietbeginn );
+		$date    = \DateTimeImmutable::createFromFormat( '!Y-m-d', $mietbeginn );
 		$lines[] = 'Genau Mietbeginn: ' . ( $date ? $date->format( 'd.m.Y' ) : $mietbeginn );
 	}
 
-	$budget = woonwoon_contact_form_field_value( $values, 'woonwoon_budget' );
-	if ( $budget !== '' ) {
-		$lines[] = 'Budget: ' . number_format( (float) $budget, 0, ',', '.' ) . ' EUR';
-	}
-
-	$zimmer = woonwoon_contact_form_field_value( $values, 'woonwoon_zimmerzahl' );
-	if ( $zimmer !== '' ) {
-		$zimmer_display = str_replace( '.', ',', $zimmer );
-		$lines[]        = 'Gewünschte Zimmerzahl: ' . $zimmer_display;
+	$personen = woonwoon_contact_form_field_value( $values, 'woonwoon_personen' );
+	if ( $personen !== '' ) {
+		$lines[] = 'Personenanzahl: ' . $personen;
 	}
 
 	return implode( "\n", $lines );
@@ -249,8 +232,7 @@ add_action(
 		}
 
 		$mietbeginn = woonwoon_contact_form_field_value( $values, 'woonwoon_mietbeginn' );
-		$budget     = woonwoon_contact_form_field_value( $values, 'woonwoon_budget' );
-		$zimmer     = woonwoon_contact_form_field_value( $values, 'woonwoon_zimmerzahl' );
+		$personen   = woonwoon_contact_form_field_value( $values, 'woonwoon_personen' );
 		?>
 		<div class="form-group woonwoon-contact-field woonwoon-contact-mietbeginn">
 			<label for="woonwoon_mietbeginn"><?php esc_html_e( 'Genau Mietbeginn', 'immomakler-child-skin' ); ?></label>
@@ -262,32 +244,18 @@ add_action(
 				value="<?php echo esc_attr( $mietbeginn ); ?>"
 			>
 		</div>
-		<div class="form-group woonwoon-contact-field woonwoon-contact-budget">
-			<label for="woonwoon_budget"><?php esc_html_e( 'Budget', 'immomakler-child-skin' ); ?></label>
+		<div class="form-group woonwoon-contact-field woonwoon-contact-personen">
+			<label for="woonwoon_personen"><?php esc_html_e( 'Personenanzahl', 'immomakler-child-skin' ); ?></label>
 			<input
 				class="form-control"
 				type="number"
 				inputmode="numeric"
-				min="0"
-				step="50"
-				name="woonwoon_budget"
-				id="woonwoon_budget"
-				placeholder="<?php esc_attr_e( 'EUR', 'immomakler-child-skin' ); ?>"
-				value="<?php echo esc_attr( $budget ); ?>"
-			>
-		</div>
-		<div class="form-group woonwoon-contact-field woonwoon-contact-zimmerzahl">
-			<label for="woonwoon_zimmerzahl"><?php esc_html_e( 'Gewünschte Zimmerzahl', 'immomakler-child-skin' ); ?></label>
-			<input
-				class="form-control"
-				type="number"
-				inputmode="decimal"
-				min="0.5"
-				max="10"
-				step="0.5"
-				name="woonwoon_zimmerzahl"
-				id="woonwoon_zimmerzahl"
-				value="<?php echo esc_attr( $zimmer ); ?>"
+				min="1"
+				max="20"
+				step="1"
+				name="woonwoon_personen"
+				id="woonwoon_personen"
+				value="<?php echo esc_attr( $personen ); ?>"
 			>
 		</div>
 		<?php
